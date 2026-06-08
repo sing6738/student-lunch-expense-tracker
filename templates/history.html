@@ -1,0 +1,98 @@
+{% extends "base.html" %}
+{% block title %}ประวัติ{% endblock %}
+{% block content %}
+<div class="page-heading">
+  <div>
+    <h1>ประวัติรายจ่าย</h1>
+    <p>เรียงจากรายการใหม่ไปเก่า</p>
+  </div>
+</div>
+
+<section class="panel mb-4">
+  <form class="row g-3 align-items-end" method="get">
+    <div class="col-md-4">
+      <label class="form-label" for="date">ค้นหาตามวันที่</label>
+      <input class="form-control" id="date" type="date" name="date" value="{{ search_date }}">
+    </div>
+    <div class="col-md-4">
+      <label class="form-label" for="restaurant_id">ร้านอาหาร</label>
+      <select class="form-select" id="restaurant_id" name="restaurant_id">
+        <option value="0">ทุกร้าน</option>
+        {% for restaurant in restaurants %}
+        <option value="{{ restaurant.id }}" {% if restaurant_id == restaurant.id %}selected{% endif %}>{{ restaurant.name }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="col-md-4 d-flex gap-2">
+      <button class="btn btn-primary" type="submit"><i class="bi bi-search"></i> ค้นหา</button>
+      <a class="btn btn-light" href="{{ url_for('history') }}">ล้าง</a>
+    </div>
+  </form>
+</section>
+
+<section class="panel">
+  <div class="table-responsive">
+    <table class="table align-middle">
+      <thead>
+        <tr>
+          <th>วันที่</th>
+          <th>ร้าน</th>
+          <th>เมนู</th>
+          <th class="text-end">ราคา</th>
+          <th class="text-end">จัดการ</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for expense in pagination.items %}
+        <tr>
+          <td>{{ expense.expense_date.strftime("%d/%m/%Y") }}</td>
+          <td>{{ expense.menu.restaurant.name }}</td>
+          <td>{{ expense.menu.menu_name }}</td>
+          <td class="text-end">{{ expense.price|baht }}</td>
+          <td class="text-end">
+            <a class="btn btn-sm btn-outline-primary" href="{{ url_for('edit_expense', expense_id=expense.id) }}"><i class="bi bi-pencil"></i></a>
+            <button class="btn btn-sm btn-outline-danger" data-bs-toggle="modal" data-bs-target="#deleteModal{{ expense.id }}"><i class="bi bi-trash"></i></button>
+            <div class="modal fade" id="deleteModal{{ expense.id }}" tabindex="-1" aria-hidden="true">
+              <div class="modal-dialog modal-dialog-centered">
+                <div class="modal-content text-start">
+                  <div class="modal-header">
+                    <h5 class="modal-title">ยืนยันการลบ</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                  </div>
+                  <div class="modal-body">ต้องการลบรายการ {{ expense.menu.restaurant.name }} - {{ expense.menu.menu_name }} ใช่ไหม?</div>
+                  <div class="modal-footer">
+                    <button type="button" class="btn btn-light" data-bs-dismiss="modal">ยกเลิก</button>
+                    <form method="post" action="{{ url_for('delete_expense', expense_id=expense.id) }}">
+                      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                      <button class="btn btn-danger" type="submit">ลบรายการ</button>
+                    </form>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </td>
+        </tr>
+        {% else %}
+        <tr><td colspan="5" class="text-center text-muted py-4">ไม่พบรายการ</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  {% if pagination.pages > 1 %}
+  <nav aria-label="pagination">
+    <ul class="pagination justify-content-end mb-0">
+      {% for page in pagination.iter_pages(left_edge=1, right_edge=1, left_current=2, right_current=2) %}
+        {% if page %}
+        <li class="page-item {% if page == pagination.page %}active{% endif %}">
+          <a class="page-link" href="{{ url_for('history', page=page, date=search_date, restaurant_id=restaurant_id) }}">{{ page }}</a>
+        </li>
+        {% else %}
+        <li class="page-item disabled"><span class="page-link">...</span></li>
+        {% endif %}
+      {% endfor %}
+    </ul>
+  </nav>
+  {% endif %}
+</section>
+{% endblock %}

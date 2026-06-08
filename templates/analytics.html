@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+{% block title %}Analytics{% endblock %}
+{% block content %}
+<div class="page-heading">
+  <div>
+    <h1>Analytics</h1>
+    <p>สถิติการใช้เงินและเมนูที่เลือกบ่อย</p>
+  </div>
+</div>
+
+<section class="stats-grid">
+  <article class="stat-card">
+    <span>ร้านที่กินบ่อยที่สุด</span>
+    <strong>{{ data.favorite_restaurant }}</strong>
+  </article>
+  <article class="stat-card">
+    <span>เมนูที่กินบ่อยที่สุด</span>
+    <strong>{{ data.favorite_menu }}</strong>
+  </article>
+  <article class="stat-card">
+    <span>เฉลี่ยต่อวัน</span>
+    <strong>{{ data.average_per_day|baht }} บาท</strong>
+  </article>
+  <article class="stat-card">
+    <span>รวมเดือนนี้</span>
+    <strong>{{ data.monthly_total|baht }} บาท</strong>
+  </article>
+</section>
+
+<div class="row g-4 mt-1">
+  <div class="col-lg-4">
+    <section class="panel chart-panel"><h2>สัดส่วนตามร้าน</h2><canvas id="restaurantPie"></canvas></section>
+  </div>
+  <div class="col-lg-4">
+    <section class="panel chart-panel"><h2>รวมรายเดือน</h2><canvas id="monthlyBar"></canvas></section>
+  </div>
+  <div class="col-lg-4">
+    <section class="panel chart-panel"><h2>แนวโน้มรายวัน</h2><canvas id="dailyLine"></canvas></section>
+  </div>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+  window.analyticsData = {{ data|tojson }};
+</script>
+<script src="{{ url_for('static', filename='js/charts.js') }}"></script>
+{% endblock %}

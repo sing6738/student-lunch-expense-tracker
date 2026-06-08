@@ -1,0 +1,67 @@
+{% extends "base.html" %}
+{% block title %}Dashboard{% endblock %}
+{% block content %}
+<div class="page-heading">
+  <div>
+    <h1>Dashboard</h1>
+    <p>สรุปรายจ่ายมื้อกลางวันของคุณ</p>
+  </div>
+  <a class="btn btn-primary" href="{{ url_for('add_expense') }}"><i class="bi bi-plus-lg"></i> เพิ่มรายการ</a>
+</div>
+
+{% if over_budget %}
+<div class="alert alert-danger budget-alert"><i class="bi bi-exclamation-triangle"></i> คุณใช้เงินเกินงบแล้ว</div>
+{% endif %}
+
+<section class="stats-grid">
+  <article class="stat-card">
+    <span>วันนี้</span>
+    <strong>{{ today_total|baht }} บาท</strong>
+  </article>
+  <article class="stat-card">
+    <span>สัปดาห์นี้</span>
+    <strong>{{ week_total|baht }} บาท</strong>
+  </article>
+  <article class="stat-card">
+    <span>เดือนนี้</span>
+    <strong>{{ month_total|baht }} บาท</strong>
+  </article>
+</section>
+
+<div class="row g-4 mt-1">
+  <div class="col-lg-7">
+    <section class="panel">
+      <div class="panel-title">
+        <h2>กราฟ 7 วันล่าสุด</h2>
+      </div>
+      <canvas id="dashboardChart" height="130"></canvas>
+    </section>
+  </div>
+  <div class="col-lg-5">
+    <section class="panel">
+      <div class="panel-title">
+        <h2>รายการล่าสุด</h2>
+      </div>
+      <div class="list-group list-group-flush latest-list">
+        {% for expense in latest_expenses %}
+        <div class="list-group-item px-0 d-flex justify-content-between align-items-center">
+          <div>
+            <strong>{{ expense.menu.restaurant.name }}</strong>
+            <div class="text-muted small">{{ expense.menu.menu_name }} · {{ expense.expense_date.strftime("%d/%m/%Y") }}</div>
+          </div>
+          <span class="amount">{{ expense.price|baht }}</span>
+        </div>
+        {% else %}
+        <div class="text-muted py-3">ยังไม่มีรายการ</div>
+        {% endfor %}
+      </div>
+    </section>
+  </div>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+  window.dashboardChartData = {{ chart_data|tojson }};
+</script>
+<script src="{{ url_for('static', filename='js/charts.js') }}"></script>
+{% endblock %}

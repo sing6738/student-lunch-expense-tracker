@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+{% block title %}งบประมาณ{% endblock %}
+{% block content %}
+<div class="page-heading">
+  <div>
+    <h1>งบประมาณรายวัน</h1>
+    <p>ตั้งงบเพื่อให้ Dashboard แจ้งเตือนเมื่อใช้เกิน</p>
+  </div>
+</div>
+
+<section class="panel form-panel">
+  <form method="post" novalidate>
+    {{ form.hidden_tag() }}
+    <div class="mb-3">
+      {{ form.daily_budget.label(class="form-label") }}
+      <div class="input-group">
+        {{ form.daily_budget(class="form-control", step="0.01", placeholder="เช่น 100") }}
+        <span class="input-group-text">บาทต่อวัน</span>
+      </div>
+      {% for error in form.daily_budget.errors %}<div class="invalid-hint">{{ error }}</div>{% endfor %}
+    </div>
+    {{ form.submit(class="btn btn-primary") }}
+  </form>
+</section>
+{% endblock %}

@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+{% block title %}สมัครสมาชิก{% endblock %}
+{% block auth_content %}
+<section class="auth-card">
+  <div class="auth-copy">
+    <span class="brand-mark"><i class="bi bi-wallet2"></i></span>
+    <h1>เริ่มบันทึกมื้อกลางวัน</h1>
+    <p>สร้างบัญชีเพื่อเก็บข้อมูลแยกตามผู้ใช้ พร้อมระบบรหัสผ่านแบบ hash และ session login</p>
+  </div>
+  <form method="post" class="auth-form" novalidate>
+    {{ form.hidden_tag() }}
+    <h2>สมัครสมาชิก</h2>
+    <div class="mb-3">
+      {{ form.username.label(class="form-label") }}
+      {{ form.username(class="form-control", autofocus=true) }}
+      {% for error in form.username.errors %}<div class="invalid-hint">{{ error }}</div>{% endfor %}
+    </div>
+    <div class="mb-3">
+      {{ form.email.label(class="form-label") }}
+      {{ form.email(class="form-control") }}
+      {% for error in form.email.errors %}<div class="invalid-hint">{{ error }}</div>{% endfor %}
+    </div>
+    <div class="mb-3">
+      {{ form.password.label(class="form-label") }}
+      {{ form.password(class="form-control") }}
+      {% for error in form.password.errors %}<div class="invalid-hint">{{ error }}</div>{% endfor %}
+    </div>
+    <div class="mb-3">
+      {{ form.confirm_password.label(class="form-label") }}
+      {{ form.confirm_password(class="form-control") }}
+      {% for error in form.confirm_password.errors %}<div class="invalid-hint">{{ error }}</div>{% endfor %}
+    </div>
+    {{ form.submit(class="btn btn-primary w-100") }}
+    <p class="text-center mt-3 mb-0">มีบัญชีแล้ว? <a href="{{ url_for('login') }}">เข้าสู่ระบบ</a></p>
+  </form>
+</section>
+{% endblock %}
