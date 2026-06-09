@@ -28,6 +28,26 @@
   </article>
 </section>
 
+{% if monthly_budget %}
+<section class="panel budget-progress-panel">
+  <div class="budget-progress-header">
+    <div>
+      <span class="budget-label">งบประมาณเดือนนี้</span>
+      <span class="budget-numbers">
+        ใช้ไปแล้ว <strong>{{ month_total|baht }}</strong> / {{ monthly_budget|baht }} บาท
+      </span>
+    </div>
+    <span class="budget-percent {% if budget_percent >= 100 %}over{% elif budget_percent >= 80 %}warn{% endif %}">
+      {{ budget_percent }}%
+    </span>
+  </div>
+  <div class="budget-bar-track">
+    <div class="budget-bar-fill {% if budget_percent >= 100 %}over{% elif budget_percent >= 80 %}warn{% endif %}"
+         style="width: {{ budget_percent }}%"></div>
+  </div>
+</section>
+{% endif %}
+
 <div class="row g-4 mt-1">
   <div class="col-lg-7">
     <section class="panel">
@@ -49,7 +69,34 @@
             <strong>{{ expense.menu.restaurant.name }}</strong>
             <div class="text-muted small">{{ expense.menu.menu_name }} · {{ expense.expense_date.strftime("%d/%m/%Y") }}</div>
           </div>
-          <span class="amount">{{ expense.price|baht }}</span>
+          <div class="d-flex align-items-center gap-2">
+            <span class="amount">{{ expense.price|baht }}</span>
+            <a class="quick-action-btn edit" href="{{ url_for('edit_expense', expense_id=expense.id) }}" title="แก้ไข">
+              <i class="bi bi-pencil"></i>
+            </a>
+            <button class="quick-action-btn del" data-bs-toggle="modal" data-bs-target="#qDelModal{{ expense.id }}" title="ลบ">
+              <i class="bi bi-trash"></i>
+            </button>
+          </div>
+        </div>
+
+        <div class="modal fade" id="qDelModal{{ expense.id }}" tabindex="-1" aria-hidden="true">
+          <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content text-start">
+              <div class="modal-header">
+                <h5 class="modal-title">ยืนยันการลบ</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+              </div>
+              <div class="modal-body">ต้องการลบรายการ {{ expense.menu.restaurant.name }} - {{ expense.menu.menu_name }} ใช่ไหม?</div>
+              <div class="modal-footer">
+                <button type="button" class="btn btn-light" data-bs-dismiss="modal">ยกเลิก</button>
+                <form method="post" action="{{ url_for('delete_expense', expense_id=expense.id) }}">
+                  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                  <button class="btn btn-danger" type="submit">ลบรายการ</button>
+                </form>
+              </div>
+            </div>
+          </div>
         </div>
         {% else %}
         <div class="text-muted py-3">ยังไม่มีรายการ</div>
