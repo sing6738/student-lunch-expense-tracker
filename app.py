@@ -313,6 +313,13 @@ def register_routes(app):
             .all()
         )
         over_budget = user.daily_budget is not None and today_total > user.daily_budget
+
+        # Monthly budget progress
+        import calendar
+        days_in_month = calendar.monthrange(today.year, today.month)[1]
+        monthly_budget = (user.daily_budget * days_in_month) if user.daily_budget else None
+        budget_percent = min(round(float(month_total) / float(monthly_budget) * 100, 1), 100) if monthly_budget else None
+
         return render_template(
             "dashboard.html",
             today_total=today_total,
@@ -321,6 +328,8 @@ def register_routes(app):
             latest_expenses=latest_expenses,
             chart_data=dashboard_chart_data(user.id),
             over_budget=over_budget,
+            monthly_budget=monthly_budget,
+            budget_percent=budget_percent,
         )
 
     @app.route("/expenses/add", methods=["GET", "POST"])
