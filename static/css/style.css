@@ -794,3 +794,129 @@ input[type="date"]::-webkit-calendar-picker-indicator {
 /* Row gap utility used in templates */
 .g-3 { --bs-gutter-x: 1rem; --bs-gutter-y: 1rem; }
 .g-4 { --bs-gutter-x: 1.25rem; --bs-gutter-y: 1.25rem; }
+
+/* =====================================================
+   BUDGET PROGRESS BAR
+   ===================================================== */
+.budget-progress-panel {
+  padding: 16px 22px;
+  margin-bottom: 4px;
+}
+
+.budget-progress-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+  gap: 12px;
+}
+
+.budget-label {
+  display: block;
+  font-size: 0.72rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-muted);
+  margin-bottom: 3px;
+}
+
+.budget-numbers {
+  font-size: 0.88rem;
+  color: var(--text-secondary);
+}
+
+.budget-numbers strong {
+  color: var(--text-primary);
+  font-weight: 600;
+}
+
+.budget-percent {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--purple-400);
+  letter-spacing: -0.02em;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.budget-percent.warn  { color: var(--warning); }
+.budget-percent.over  { color: var(--danger); }
+
+.budget-bar-track {
+  height: 8px;
+  background: var(--bg-raised);
+  border-radius: 99px;
+  overflow: hidden;
+  border: 1px solid var(--bg-border);
+}
+
+.budget-bar-fill {
+  height: 100%;
+  border-radius: 99px;
+  background: linear-gradient(90deg, var(--purple-500), #a78bfa);
+  transition: width 0.6s cubic-bezier(.4,0,.2,1);
+  min-width: 4px;
+}
+
+.budget-bar-fill.warn {
+  background: linear-gradient(90deg, #d97706, var(--warning));
+}
+
+.budget-bar-fill.over {
+  background: linear-gradient(90deg, #dc2626, var(--danger));
+}
+
+/* =====================================================
+   QUICK ACTION BUTTONS (latest list)
+   ===================================================== */
+.quick-action-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: var(--radius-sm);
+  border: 1px solid transparent;
+  background: transparent;
+  cursor: pointer;
+  font-size: 0.82rem;
+  line-height: 1;
+  transition: background var(--transition), border-color var(--transition), color var(--transition);
+  text-decoration: none;
+  flex-shrink: 0;
+  opacity: 0;
+  padding: 0;
+}
+
+/* show buttons on row hover */
+.list-group-item:hover .quick-action-btn {
+  opacity: 1;
+}
+
+.quick-action-btn.edit {
+  color: var(--purple-400);
+  border-color: var(--bg-border);
+}
+
+.quick-action-btn.edit:hover {
+  background: var(--purple-glow);
+  border-color: var(--purple-500);
+  color: var(--purple-400);
+}
+
+.quick-action-btn.del {
+  color: var(--danger);
+  border-color: var(--bg-border);
+}
+
+.quick-action-btn.del:hover {
+  background: var(--danger-bg);
+  border-color: var(--danger);
+  color: var(--danger);
+}
+
+/* always visible on touch devices */
+@media (hover: none) {
+  .quick-action-btn { opacity: 1; }
+}
