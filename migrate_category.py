@@ -1,32 +1,26 @@
-"""Migration script: เพิ่ม column 'category' ใน table 'expense'
-
-รันครั้งเดียว:  python migrate_category.py
-ข้อมูลเดิมจะได้ค่า default = 'อาหาร'
-"""
-import sqlite3
 import os
-
-DB_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "database.db")
+from sqlalchemy import text, inspect
+from app import create_app
+from models import db
 
 
 def migrate():
-    conn = sqlite3.connect(DB_PATH)
-    cursor = conn.cursor()
+    app = create_app()
+    with app.app_context():
+        # ตรวจสอบโครงสร้างตารางด้วย SQLAlchemy Inspector (รองรับทั้ง SQLite และ PostgreSQL)
+        inspector = inspect(db.engine)
+        columns = [col["name"] for col in inspector.get_columns("expense")]
 
-    # ตรวจว่า column มีอยู่แล้วหรือยัง
-    cursor.execute("PRAGMA table_info(expense)")
-    columns = [row[1] for row in cursor.fetchall()]
-
-    if "category" in columns:
-        print("[OK] column 'category' มีอยู่แล้ว — ไม่ต้อง migrate")
-    else:
-        cursor.execute(
-            "ALTER TABLE expense ADD COLUMN category VARCHAR(20) NOT NULL DEFAULT 'อาหาร'"
-        )
-        conn.commit()
-        print("[OK] เพิ่ม column 'category' สำเร็จ (default = 'อาหาร')")
-
-    conn.close()
+        if "category" in columns:
+            print("[OK] column 'category' มีอยู่แล้ว — ไม่ต้อง migrate")
+        else:
+            with db.engine.begin() as conn:
+                conn.execute(
+                    text(
+                        "ALTER TABLE expense ADD COLUMN category VARCHAR(20) NOT NULL DEFAULT 'อาหาร'"
+                    )
+                )
+            print("[OK] เพิ่ม column 'category' สำเร็จ (default = 'อาหาร')")
 
 
 if __name__ == "__main__":
