@@ -3,7 +3,7 @@ services:
     name: lunch-expense-app
     runtime: python
     buildCommand: pip install -r requirements.txt
-    startCommand: gunicorn app:app
+    startCommand: python migrate_category.py && gunicorn app:app
     envVars:
       - key: SECRET_KEY
         generateValue: true
