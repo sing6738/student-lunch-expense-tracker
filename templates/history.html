@@ -10,11 +10,11 @@
 
 <section class="panel mb-4">
   <form class="row g-3 align-items-end" method="get">
-    <div class="col-md-4">
+    <div class="col-md-3">
       <label class="form-label" for="date">ค้นหาตามวันที่</label>
       <input class="form-control" id="date" type="date" name="date" value="{{ search_date }}">
     </div>
-    <div class="col-md-4">
+    <div class="col-md-3">
       <label class="form-label" for="restaurant_id">ร้านอาหาร</label>
       <select class="form-select" id="restaurant_id" name="restaurant_id">
         <option value="0">ทุกร้าน</option>
@@ -23,9 +23,19 @@
         {% endfor %}
       </select>
     </div>
-    <div class="col-md-4 d-flex gap-2">
+    <div class="col-md-3">
+      <label class="form-label" for="category">หมวดหมู่</label>
+      <select class="form-select" id="category" name="category">
+        <option value="">ทุกหมวดหมู่</option>
+        {% for cat in categories %}
+        <option value="{{ cat }}" {% if category == cat %}selected{% endif %}>{{ cat }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="col-md-3 d-flex gap-2">
       <button class="btn btn-primary" type="submit"><i class="bi bi-search"></i> ค้นหา</button>
       <a class="btn btn-light" href="{{ url_for('history') }}">ล้าง</a>
+      <a class="btn btn-success" href="{{ url_for('export_history', date=search_date, restaurant_id=restaurant_id, category=category) }}"><i class="bi bi-download"></i> Export CSV</a>
     </div>
   </form>
 </section>
@@ -38,6 +48,7 @@
           <th>วันที่</th>
           <th>ร้าน</th>
           <th>เมนู</th>
+          <th>หมวดหมู่</th>
           <th class="text-end">ราคา</th>
           <th class="text-end">จัดการ</th>
         </tr>
@@ -48,6 +59,7 @@
           <td>{{ expense.expense_date.strftime("%d/%m/%Y") }}</td>
           <td>{{ expense.menu.restaurant.name }}</td>
           <td>{{ expense.menu.menu_name }}</td>
+          <td><span class="badge bg-{% if expense.category == 'อาหาร' %}primary{% elif expense.category == 'เครื่องดื่ม' %}info{% else %}warning text-dark{% endif %}">{{ expense.category }}</span></td>
           <td class="text-end">{{ expense.price|baht }}</td>
           <td class="text-end">
             <a class="btn btn-sm btn-outline-primary" href="{{ url_for('edit_expense', expense_id=expense.id) }}"><i class="bi bi-pencil"></i></a>
@@ -73,7 +85,7 @@
           </td>
         </tr>
         {% else %}
-        <tr><td colspan="5" class="text-center text-muted py-4">ไม่พบรายการ</td></tr>
+        <tr><td colspan="6" class="text-center text-muted py-4">ไม่พบรายการ</td></tr>
         {% endfor %}
       </tbody>
     </table>
@@ -85,7 +97,7 @@
       {% for page in pagination.iter_pages(left_edge=1, right_edge=1, left_current=2, right_current=2) %}
         {% if page %}
         <li class="page-item {% if page == pagination.page %}active{% endif %}">
-          <a class="page-link" href="{{ url_for('history', page=page, date=search_date, restaurant_id=restaurant_id) }}">{{ page }}</a>
+          <a class="page-link" href="{{ url_for('history', page=page, date=search_date, restaurant_id=restaurant_id, category=category) }}">{{ page }}</a>
         </li>
         {% else %}
         <li class="page-item disabled"><span class="page-link">...</span></li>

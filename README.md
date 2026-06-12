@@ -87,8 +87,18 @@ http://127.0.0.1:5000
 python app.py
 ```
 
+## ใช้ PostgreSQL บน Render เพื่อให้ข้อมูลไม่หาย
+
+SQLite เหมาะกับการทดสอบในเครื่อง แต่ถ้า deploy บน Render และต้องการให้ข้อมูลอยู่หลัง redeploy/restart ให้สร้าง Render Postgres แล้วตั้งค่า Environment Variable:
+
+```text
+DATABASE_URL=postgresql://USER:PASSWORD@HOST:PORT/DATABASE
+```
+
+บน Render ให้ใช้ค่า Internal Database URL ของ PostgreSQL service เป็น `DATABASE_URL` สำหรับ Web Service นี้ แอปจะอ่านค่านี้จาก `config.py` อัตโนมัติ ถ้าไม่มี `DATABASE_URL` จึงค่อย fallback ไปใช้ `database.db`
+
 ## หมายเหตุ Production
 
 - เปลี่ยน `SECRET_KEY` ผ่าน environment variable ก่อน deploy
-- สำหรับ production จริงควรใช้ HTTPS, secure cookie settings และ database server ที่เหมาะกับปริมาณผู้ใช้
-- SQLite เหมาะกับงาน demo, prototype และระบบขนาดเล็ก
+- สำหรับ production จริงควรใช้ HTTPS, secure cookie settings และ PostgreSQL
+- SQLite เหมาะกับงาน demo, prototype และระบบขนาดเล็กในเครื่อง

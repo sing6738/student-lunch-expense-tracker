@@ -1,8 +1,11 @@
+import csv
+import io
 from datetime import date, datetime, timedelta
 from functools import wraps
 
 from flask import (
     Flask,
+    Response,
     abort,
     flash,
     jsonify,
@@ -17,7 +20,7 @@ from sqlalchemy import extract, func
 
 from config import Config
 from forms import BudgetForm, ExpenseForm, LoginForm, RegisterForm
-from models import Expense, Menu, Restaurant, User, db
+from models import EXPENSE_CATEGORIES, Expense, Menu, Restaurant, User, db
 
 
 csrf = CSRFProtect()
@@ -348,6 +351,7 @@ def register_routes(app):
                     user_id=session["user_id"],
                     menu_id=menu.id,
                     price=form.price.data,
+                    category=form.category.data,
                     expense_date=form.expense_date.data,
                 )
                 db.session.add(expense)
@@ -374,6 +378,7 @@ def register_routes(app):
             else:
                 expense.menu_id = menu.id
                 expense.price = form.price.data
+                expense.category = form.category.data
                 expense.expense_date = form.expense_date.data
                 db.session.commit()
                 flash("แก้ไขรายการแล้ว", "success")
@@ -395,6 +400,7 @@ def register_routes(app):
         page = request.args.get("page", 1, type=int)
         search_date = request.args.get("date", "", type=str)
         restaurant_id = request.args.get("restaurant_id", 0, type=int)
+        category = request.args.get("category", "", type=str)
 
         query = user_expenses_query(session["user_id"])
         if search_date:
@@ -405,6 +411,8 @@ def register_routes(app):
                 flash("รูปแบบวันที่ไม่ถูกต้อง", "warning")
         if restaurant_id:
             query = query.filter(Restaurant.id == restaurant_id)
+        if category and category in EXPENSE_CATEGORIES:
+            query = query.filter(Expense.category == category)
 
         pagination = query.order_by(Expense.expense_date.desc(), Expense.created_at.desc()).paginate(
             page=page,
@@ -418,6 +426,49 @@ def register_routes(app):
             restaurants=restaurants,
             search_date=search_date,
             restaurant_id=restaurant_id,
+            category=category,
+            categories=EXPENSE_CATEGORIES,
+        )
+
+    @app.route("/history/export")
+    @login_required
+    def export_history():
+        search_date = request.args.get("date", "", type=str)
+        restaurant_id = request.args.get("restaurant_id", 0, type=int)
+        category = request.args.get("category", "", type=str)
+
+        query = user_expenses_query(session["user_id"])
+        if search_date:
+            try:
+                parsed_date = datetime.strptime(search_date, "%Y-%m-%d").date()
+                query = query.filter(Expense.expense_date == parsed_date)
+            except ValueError:
+                pass
+        if restaurant_id:
+            query = query.filter(Restaurant.id == restaurant_id)
+        if category and category in EXPENSE_CATEGORIES:
+            query = query.filter(Expense.category == category)
+
+        expenses = query.order_by(Expense.expense_date.desc(), Expense.created_at.desc()).all()
+
+        output = io.StringIO()
+        output.write("\ufeff")  # BOM for Excel
+        writer = csv.writer(output)
+        writer.writerow(["วันที่", "ร้าน", "เมนู", "หมวดหมู่", "ราคา"])
+        for exp in expenses:
+            writer.writerow([
+                exp.expense_date.strftime("%d/%m/%Y"),
+                exp.menu.restaurant.name,
+                exp.menu.menu_name,
+                exp.category,
+                f"{exp.price:.2f}",
+            ])
+
+        filename = f"expenses_{date.today().strftime('%Y-%m-%d')}.csv"
+        return Response(
+            output.getvalue(),
+            mimetype="text/csv; charset=utf-8",
+            headers={"Content-Disposition": f"attachment; filename={filename}"},
         )
 
     @app.route("/analytics")

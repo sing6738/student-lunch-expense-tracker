@@ -26,6 +26,11 @@ class ExpenseForm(FlaskForm):
     restaurant_id = SelectField("ร้านอาหาร", coerce=int, validators=[DataRequired()])
     menu_id = SelectField("เมนู", coerce=int, validators=[DataRequired()])
     price = FloatField("ราคา", validators=[DataRequired(), NumberRange(min=0)])
+    category = SelectField(
+        "หมวดหมู่",
+        choices=[("อาหาร", "อาหาร"), ("เครื่องดื่ม", "เครื่องดื่ม"), ("ของว่าง", "ของว่าง")],
+        validators=[DataRequired()],
+    )
     expense_date = DateField("วันที่", default=date.today, validators=[DataRequired()])
     submit = SubmitField("บันทึก")
 
