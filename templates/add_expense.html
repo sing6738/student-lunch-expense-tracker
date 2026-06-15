@@ -1,0 +1,54 @@
+{% extends "base.html" %}
+{% block title %}{% if expense %}แก้ไขรายการ{% else %}เพิ่มรายการ{% endif %}{% endblock %}
+{% block content %}
+<div class="page-heading">
+  <div>
+    <h1>{% if expense %}แก้ไขรายการ{% else %}เพิ่มรายการอาหาร{% endif %}</h1>
+    <p>เลือกประเภทร้านและเมนู ระบบจะเติมราคาให้อัตโนมัติ</p>
+  </div>
+</div>
+
+<section class="panel form-panel">
+  <form method="post" novalidate>
+    {{ form.hidden_tag() }}
+    <div class="row g-3">
+      <div class="col-md-6">
+        {{ form.restaurant_id.label(class="form-label") }}
+        {{ form.restaurant_id(class="form-select", id="restaurantSelect") }}
+      </div>
+      <div class="col-md-6">
+        {{ form.menu_id.label(class="form-label") }}
+        {{ form.menu_id(class="form-select", id="menuSelect") }}
+      </div>
+      <div class="col-md-4">
+        {{ form.price.label(class="form-label") }}
+        <div class="input-group">
+          {{ form.price(class="form-control", id="priceInput", step="0.01") }}
+          <span class="input-group-text">บาท</span>
+        </div>
+        {% for error in form.price.errors %}<div class="invalid-hint">{{ error }}</div>{% endfor %}
+      </div>
+      <div class="col-md-4">
+        {{ form.category.label(class="form-label") }}
+        {{ form.category(class="form-select") }}
+      </div>
+      <div class="col-md-4">
+        {{ form.expense_date.label(class="form-label") }}
+        {{ form.expense_date(class="form-control") }}
+        {% for error in form.expense_date.errors %}<div class="invalid-hint">{{ error }}</div>{% endfor %}
+      </div>
+    </div>
+    <div class="d-flex gap-2 mt-4">
+      {{ form.submit(class="btn btn-primary") }}
+      <a class="btn btn-light" href="{{ url_for('history') }}">ยกเลิก</a>
+    </div>
+  </form>
+</section>
+{% endblock %}
+{% block scripts %}
+<script>
+  window.menusByRestaurant = {{ menus_by_restaurant|tojson }};
+  window.selectedMenuId = "{{ form.menu_id.data or '' }}";
+</script>
+<script src="{{ url_for('static', filename='js/menu.js') }}"></script>
+{% endblock %}

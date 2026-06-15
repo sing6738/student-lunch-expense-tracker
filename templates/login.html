@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+{% block title %}เข้าสู่ระบบ{% endblock %}
+{% block auth_content %}
+<section class="auth-card animate-in stagger-1">
+  <div class="auth-copy">
+    <span class="brand-mark"><i class="bi bi-wallet2"></i></span>
+    <h1>Lunch Budget</h1>
+    <p>บันทึกรายจ่ายมื้อกลางวัน ดูงบรายวัน และเห็นพฤติกรรมการกินของตัวเองแบบเข้าใจง่าย</p>
+  </div>
+  <form method="post" class="auth-form" novalidate>
+    {{ form.hidden_tag() }}
+    <h2>เข้าสู่ระบบ</h2>
+    <div class="mb-3">
+      {{ form.username.label(class="form-label") }}
+      {{ form.username(class="form-control", autofocus=true) }}
+      {% for error in form.username.errors %}<div class="invalid-hint">{{ error }}</div>{% endfor %}
+    </div>
+    <div class="mb-3">
+      {{ form.password.label(class="form-label") }}
+      {{ form.password(class="form-control") }}
+      {% for error in form.password.errors %}<div class="invalid-hint">{{ error }}</div>{% endfor %}
+    </div>
+    {{ form.submit(class="btn btn-primary w-100") }}
+    <p class="text-center mt-3 mb-0">ยังไม่มีบัญชี? <a href="{{ url_for('register') }}">สมัครสมาชิก</a></p>
+  </form>
+</section>
+{% endblock %}
