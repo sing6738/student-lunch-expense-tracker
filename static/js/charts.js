@@ -43,12 +43,22 @@
     if (!element || typeof Chart === "undefined") {
       return;
     }
-    // Deep merge or assign defaults
+    
+    // Improved merge: only apply defaults for missing keys at the top level
+    // and specifically handle nested objects like plugins and scales if needed.
+    // For simplicity here, we'll just ensure defaultOptions are the base.
+    const mergedOptions = JSON.parse(JSON.stringify(defaultOptions));
     if (config.options) {
-      config.options = Object.assign({}, defaultOptions, config.options);
-    } else {
-      config.options = defaultOptions;
+      Object.keys(config.options).forEach(key => {
+        if (typeof config.options[key] === 'object' && config.options[key] !== null && !Array.isArray(config.options[key])) {
+          mergedOptions[key] = Object.assign({}, mergedOptions[key], config.options[key]);
+        } else {
+          mergedOptions[key] = config.options[key];
+        }
+      });
     }
+    config.options = mergedOptions;
+    
     return new Chart(element, config);
   }
 
@@ -70,6 +80,7 @@
         }]
       },
       options: {
+        maintainAspectRatio: true,
         plugins: { legend: { display: false } }
       }
     });

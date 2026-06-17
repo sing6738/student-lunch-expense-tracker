@@ -233,10 +233,11 @@ def analytics_payload(user_id):
         db.session.query(Expense.expense_date, func.sum(Expense.price))
         .filter(Expense.user_id == user_id)
         .group_by(Expense.expense_date)
-        .order_by(Expense.expense_date.asc())
+        .order_by(Expense.expense_date.desc())
         .limit(30)
         .all()
     )
+    daily_rows.reverse() # Show in chronological order (oldest to newest)
 
     monthly_labels = [f"{int(month):02d}/{int(year)}" for year, month, _ in monthly_rows]
     monthly_values = [float(total) for _, _, total in monthly_rows]
