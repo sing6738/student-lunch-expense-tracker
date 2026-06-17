@@ -79,6 +79,13 @@
   animation-delay: -10s;
 }
 
+.blob:nth-child(4) {
+  background: radial-gradient(circle, #4c1d95 0%, transparent 70%);
+  bottom: 20%; left: 10%;
+  animation-duration: 30s;
+  animation-delay: -15s;
+}
+
 @keyframes move {
   from { transform: translate(0, 0) scale(1); }
   to { transform: translate(100px, 100px) scale(1.2); }
@@ -109,11 +116,54 @@ a:hover { color: #fff; text-decoration: none; }
 ::-webkit-scrollbar-thumb { background: var(--glass-shine); border-radius: 99px; }
 
 /* =====================================================
+   UTILITIES & ENHANCED UI
+   ===================================================== */
+.text-accent { color: var(--purple-400) !important; }
+.fw-500 { font-weight: 500; }
+.fw-600 { font-weight: 600; }
+
+.glass-panel {
+  background: rgba(25, 22, 43, 0.75) !important;
+  backdrop-filter: blur(35px) !important;
+  -webkit-backdrop-filter: blur(35px) !important;
+  border: 1px solid var(--glass-border) !important;
+}
+
+.btn-glass {
+  background: var(--glass-shine);
+  border: 1px solid var(--glass-border);
+  color: var(--text-primary);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+}
+.btn-glass:hover {
+  background: rgba(255, 255, 255, 0.2);
+  color: #fff;
+  transform: translateY(-2px);
+}
+
+/* Hover glow effect for panels */
+.panel-glow:hover {
+  box-shadow: 0 0 30px rgba(139, 92, 246, 0.15);
+  border-color: rgba(139, 92, 246, 0.3);
+}
+
+/* =====================================================
    ANIMATIONS
    ===================================================== */
 @keyframes slideUpFade {
   from { opacity: 0; transform: translateY(30px); filter: blur(10px); }
   to { opacity: 1; transform: translateY(0); filter: blur(0); }
+}
+
+@keyframes pulse-glow {
+  0% { box-shadow: 0 0 0 0 rgba(139, 92, 246, 0.4); }
+  70% { box-shadow: 0 0 0 10px rgba(139, 92, 246, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(139, 92, 246, 0); }
+}
+
+.pulse-primary {
+  animation: pulse-glow 2s infinite;
 }
 
 .animate-in {

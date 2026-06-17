@@ -60,7 +60,12 @@
         <tr>
           <td>{{ expense.expense_date.strftime("%d/%m/%Y") }}</td>
           <td>{{ expense.menu.restaurant.name }}</td>
-          <td>{{ expense.menu.menu_name }}</td>
+          <td>
+            {{ expense.menu.menu_name }}
+            {% if expense.note %}
+            <div class="text-muted small" style="font-size: 0.78rem; opacity: 0.85;"><i class="bi bi-chat-left-text"></i> {{ expense.note }}</div>
+            {% endif %}
+          </td>
           <td><span class="badge bg-{% if expense.category == 'อาหาร' %}primary{% elif expense.category == 'เครื่องดื่ม' %}info{% else %}warning text-dark{% endif %}">{{ expense.category }}</span></td>
           <td class="text-end">{{ expense.price|baht }}</td>
           <td class="text-end">

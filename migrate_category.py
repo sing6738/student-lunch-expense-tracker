@@ -22,6 +22,17 @@ def migrate():
                 )
             print("[OK] เพิ่ม column 'category' สำเร็จ (default = 'อาหาร')")
 
+        if "note" in columns:
+            print("[OK] column 'note' มีอยู่แล้ว — ไม่ต้อง migrate")
+        else:
+            with db.engine.begin() as conn:
+                conn.execute(
+                    text(
+                        "ALTER TABLE expense ADD COLUMN note VARCHAR(200) NULL"
+                    )
+                )
+            print("[OK] เพิ่ม column 'note' สำเร็จ")
+
 
 if __name__ == "__main__":
     migrate()

@@ -37,6 +37,11 @@
         {{ form.expense_date(class="form-control") }}
         {% for error in form.expense_date.errors %}<div class="invalid-hint">{{ error }}</div>{% endfor %}
       </div>
+      <div class="col-12">
+        {{ form.note.label(class="form-label") }}
+        {{ form.note(class="form-control", placeholder="บันทึกเพิ่มเติม เช่น กินกับเพื่อน, อร่อยมาก, มีส่วนลด ฯลฯ") }}
+        {% for error in form.note.errors %}<div class="invalid-hint">{{ error }}</div>{% endfor %}
+      </div>
     </div>
     <div class="d-flex gap-2 mt-4">
       {{ form.submit(class="btn btn-primary") }}

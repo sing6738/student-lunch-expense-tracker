@@ -32,6 +32,7 @@ class ExpenseForm(FlaskForm):
         validators=[DataRequired()],
     )
     expense_date = DateField("วันที่", default=date.today, validators=[DataRequired()])
+    note = StringField("หมายเหตุ / โน้ตเพิ่มเติม", validators=[Optional(), Length(max=200)])
     submit = SubmitField("บันทึก")
 
 
@@ -41,3 +42,15 @@ class BudgetForm(FlaskForm):
         validators=[Optional(), NumberRange(min=0, message="งบต้องไม่ติดลบ")],
     )
     submit = SubmitField("บันทึกงบประมาณ")
+
+
+class ProfileForm(FlaskForm):
+    email = StringField("อีเมล", validators=[DataRequired(), Email(), Length(max=120)])
+    old_password = PasswordField("รหัสผ่านปัจจุบัน (เพื่อยืนยันการเปลี่ยนแปลง)", validators=[DataRequired()])
+    new_password = PasswordField("รหัสผ่านใหม่ (เว้นว่างไว้หากไม่ต้องการเปลี่ยน)", validators=[Optional(), Length(min=6)])
+    confirm_new_password = PasswordField(
+        "ยืนยันรหัสผ่านใหม่",
+        validators=[Optional(), EqualTo("new_password", message="รหัสผ่านใหม่ไม่ตรงกัน")]
+    )
+    submit = SubmitField("บันทึกการเปลี่ยนแปลง")
+

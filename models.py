@@ -54,6 +54,7 @@ class Expense(db.Model):
     menu_id = db.Column(db.Integer, db.ForeignKey("menu.id"), nullable=False)
     price = db.Column(db.Float, nullable=False)
     category = db.Column(db.String(20), nullable=False, default="อาหาร")
+    note = db.Column(db.String(200), nullable=True)
     expense_date = db.Column(db.Date, default=date.today, nullable=False, index=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
 

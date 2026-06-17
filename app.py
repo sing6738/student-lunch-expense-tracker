@@ -19,7 +19,7 @@ from flask_wtf import CSRFProtect
 from sqlalchemy import extract, func
 
 from config import Config
-from forms import BudgetForm, ExpenseForm, LoginForm, RegisterForm
+from forms import BudgetForm, ExpenseForm, LoginForm, RegisterForm, ProfileForm
 from models import EXPENSE_CATEGORIES, Expense, Menu, Restaurant, User, db
 
 
@@ -67,8 +67,20 @@ def create_app():
         seed_restaurants_and_menus()
 
     register_template_filters(app)
+    register_error_handlers(app)
     register_routes(app)
     return app
+
+
+def register_error_handlers(app):
+    @app.errorhandler(404)
+    def not_found_error(error):
+        return render_template("errors/404.html"), 404
+
+    @app.errorhandler(500)
+    def internal_error(error):
+        db.session.rollback()
+        return render_template("errors/500.html"), 500
 
 
 def seed_restaurants_and_menus():
@@ -352,6 +364,7 @@ def register_routes(app):
                     menu_id=menu.id,
                     price=form.price.data,
                     category=form.category.data,
+                    note=form.note.data.strip() if form.note.data else None,
                     expense_date=form.expense_date.data,
                 )
                 db.session.add(expense)
@@ -379,6 +392,7 @@ def register_routes(app):
                 expense.menu_id = menu.id
                 expense.price = form.price.data
                 expense.category = form.category.data
+                expense.note = form.note.data.strip() if form.note.data else None
                 expense.expense_date = form.expense_date.data
                 db.session.commit()
                 flash("แก้ไขรายการแล้ว", "success")
@@ -488,6 +502,163 @@ def register_routes(app):
             flash("บันทึกงบประมาณแล้ว", "success")
             return redirect(url_for("dashboard"))
         return render_template("budget.html", form=form)
+
+    @app.route("/profile", methods=["GET", "POST"])
+    @login_required
+    def profile():
+        user = current_user()
+        form = ProfileForm(obj=user)
+        if form.validate_on_submit():
+            if not user.check_password(form.old_password.data):
+                flash("รหัสผ่านปัจจุบันไม่ถูกต้อง", "danger")
+            else:
+                email_changed = form.email.data.strip().lower() != user.email.lower()
+                if email_changed:
+                    email_exists = User.query.filter(User.email == form.email.data.strip().lower(), User.id != user.id).first()
+                    if email_exists:
+                        flash("อีเมลนี้ถูกใช้งานแล้วโดยผู้ใช้อื่น", "danger")
+                        return render_template("profile.html", form=form)
+                    user.email = form.email.data.strip().lower()
+
+                if form.new_password.data:
+                    user.set_password(form.new_password.data)
+                
+                db.session.commit()
+                flash("แก้ไขข้อมูลส่วนตัวสำเร็จ", "success")
+                return redirect(url_for("profile"))
+                
+        total_expenses = Expense.query.filter_by(user_id=user.id).count()
+        total_spent = db.session.query(func.coalesce(func.sum(Expense.price), 0)).filter(Expense.user_id == user.id).scalar()
+        
+        return render_template("profile.html", form=form, total_expenses=total_expenses, total_spent=total_spent, today=date.today())
+
+    @app.route("/manage-menus")
+    @login_required
+    def manage_menus():
+        restaurants = Restaurant.query.order_by(Restaurant.name.asc()).all()
+        return render_template("manage_menu.html", restaurants=restaurants)
+
+    @app.route("/restaurants/add", methods=["POST"])
+    @login_required
+    def add_restaurant():
+        name = request.form.get("name", "").strip()
+        if not name:
+            flash("กรุณากรอกชื่อร้านอาหาร", "danger")
+        else:
+            existing = Restaurant.query.filter_by(name=name).first()
+            if existing:
+                flash("มีร้านอาหารชื่อนี้อยู่แล้ว", "danger")
+            else:
+                restaurant = Restaurant(name=name)
+                db.session.add(restaurant)
+                db.session.commit()
+                flash("เพิ่มร้านอาหารสำเร็จ", "success")
+        return redirect(url_for("manage_menus"))
+
+    @app.route("/restaurants/<int:restaurant_id>/edit", methods=["POST"])
+    @login_required
+    def edit_restaurant(restaurant_id):
+        restaurant = db.session.get(Restaurant, restaurant_id)
+        if not restaurant:
+            abort(404)
+        name = request.form.get("name", "").strip()
+        if not name:
+            flash("กรุณากรอกชื่อร้านอาหาร", "danger")
+        else:
+            existing = Restaurant.query.filter(Restaurant.name == name, Restaurant.id != restaurant_id).first()
+            if existing:
+                flash("มีร้านอาหารชื่อนี้อยู่แล้ว", "danger")
+            else:
+                restaurant.name = name
+                db.session.commit()
+                flash("แก้ไขชื่อร้านอาหารสำเร็จ", "success")
+        return redirect(url_for("manage_menus"))
+
+    @app.route("/restaurants/<int:restaurant_id>/delete", methods=["POST"])
+    @login_required
+    def delete_restaurant(restaurant_id):
+        restaurant = db.session.get(Restaurant, restaurant_id)
+        if not restaurant:
+            abort(404)
+        in_use = Expense.query.join(Menu).filter(Menu.restaurant_id == restaurant_id).first()
+        if in_use:
+            flash("ไม่สามารถลบร้านอาหารนี้ได้ เนื่องจากมีบันทึกการใช้งานในระบบแล้ว", "danger")
+        else:
+            db.session.delete(restaurant)
+            db.session.commit()
+            flash("ลบร้านอาหารสำเร็จ", "success")
+        return redirect(url_for("manage_menus"))
+
+    @app.route("/restaurants/<int:restaurant_id>/menus/add", methods=["POST"])
+    @login_required
+    def add_menu(restaurant_id):
+        restaurant = db.session.get(Restaurant, restaurant_id)
+        if not restaurant:
+            abort(404)
+        menu_name = request.form.get("menu_name", "").strip()
+        price_val = request.form.get("price", "0")
+        try:
+            price = float(price_val)
+        except ValueError:
+            price = 0.0
+
+        if not menu_name:
+            flash("กรุณากรอกชื่อเมนู", "danger")
+        elif price < 0:
+            flash("ราคาเมนูต้องไม่ต่ำกว่า 0 บาท", "danger")
+        else:
+            existing = Menu.query.filter_by(restaurant_id=restaurant_id, menu_name=menu_name).first()
+            if existing:
+                flash("มีเมนูนี้ในร้านนี้อยู่แล้ว", "danger")
+            else:
+                menu = Menu(restaurant_id=restaurant_id, menu_name=menu_name, price=price)
+                db.session.add(menu)
+                db.session.commit()
+                flash("เพิ่มเมนูสำเร็จ", "success")
+        return redirect(url_for("manage_menus"))
+
+    @app.route("/menus/<int:menu_id>/edit", methods=["POST"])
+    @login_required
+    def edit_menu(menu_id):
+        menu = db.session.get(Menu, menu_id)
+        if not menu:
+            abort(404)
+        menu_name = request.form.get("menu_name", "").strip()
+        price_val = request.form.get("price", "0")
+        try:
+            price = float(price_val)
+        except ValueError:
+            price = 0.0
+
+        if not menu_name:
+            flash("กรุณากรอกชื่อเมนู", "danger")
+        elif price < 0:
+            flash("ราคาเมนูต้องไม่ต่ำกว่า 0 บาท", "danger")
+        else:
+            existing = Menu.query.filter(Menu.restaurant_id == menu.restaurant_id, Menu.menu_name == menu_name, Menu.id != menu_id).first()
+            if existing:
+                flash("มีเมนูนี้ในร้านนี้อยู่แล้ว", "danger")
+            else:
+                menu.menu_name = menu_name
+                menu.price = price
+                db.session.commit()
+                flash("แก้ไขเมนูสำเร็จ", "success")
+        return redirect(url_for("manage_menus"))
+
+    @app.route("/menus/<int:menu_id>/delete", methods=["POST"])
+    @login_required
+    def delete_menu(menu_id):
+        menu = db.session.get(Menu, menu_id)
+        if not menu:
+            abort(404)
+        in_use = Expense.query.filter_by(menu_id=menu_id).first()
+        if in_use:
+            flash("ไม่สามารถลบเมนูนี้ได้ เนื่องจากมีบันทึกการใช้งานในระบบแล้ว", "danger")
+        else:
+            db.session.delete(menu)
+            db.session.commit()
+            flash("ลบเมนูสำเร็จ", "success")
+        return redirect(url_for("manage_menus"))
 
     @app.route("/api/menus/<int:restaurant_id>")
     @login_required
