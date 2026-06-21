@@ -1,0 +1,81 @@
+{% extends "base.html" %}
+{% block title %}{% if order %}แก้ไขรายการสั่งซื้อ{% else %}บันทึกการสั่งของออนไลน์{% endif %}{% endblock %}
+{% block content %}
+<div class="page-heading">
+  <div>
+    <h1>{% if order %}แก้ไขรายการสั่งซื้อออนไลน์{% else %}บันทึกการสั่งของออนไลน์{% endif %}</h1>
+    <p>ระบุรายละเอียดการสั่งซื้อสินค้าออนไลน์ ระบบจะบันทึกลงสมุดรายจ่ายโดยอัตโนมัติ</p>
+  </div>
+</div>
+
+<section class="panel form-panel">
+  <form method="post" novalidate>
+    {{ form.hidden_tag() }}
+    <div class="row g-3">
+      <div class="col-md-6">
+        {{ form.platform.label(class="form-label") }}
+        {{ form.platform(class="form-select") }}
+        {% for error in form.platform.errors %}<div class="invalid-hint text-danger">{{ error }}</div>{% endfor %}
+      </div>
+      <div class="col-md-6">
+        {{ form.store_name.label(class="form-label") }}
+        {{ form.store_name(class="form-control", placeholder="เช่น ร้านค้าใน Shopee, GrabFood, สุกี้ตี๋น้อย ฯลฯ") }}
+        {% for error in form.store_name.errors %}<div class="invalid-hint text-danger">{{ error }}</div>{% endfor %}
+      </div>
+      
+      <div class="col-md-12">
+        {{ form.item_name.label(class="form-label") }}
+        {{ form.item_name(class="form-control", placeholder="เช่น เสื้อผ้าแฟชั่น, ข้าวผัดกระเพรา, หูฟังบลูทูธ ฯลฯ") }}
+        {% for error in form.item_name.errors %}<div class="invalid-hint text-danger">{{ error }}</div>{% endfor %}
+      </div>
+
+      <div class="col-md-6">
+        {{ form.price.label(class="form-label") }}
+        <div class="input-group">
+          {{ form.price(class="form-control", step="0.01") }}
+          <span class="input-group-text">บาท</span>
+        </div>
+        {% for error in form.price.errors %}<div class="invalid-hint text-danger">{{ error }}</div>{% endfor %}
+      </div>
+      
+      <div class="col-md-6">
+        {{ form.shipping_cost.label(class="form-label") }}
+        <div class="input-group">
+          {{ form.shipping_cost(class="form-control", step="0.01") }}
+          <span class="input-group-text">บาท</span>
+        </div>
+        {% for error in form.shipping_cost.errors %}<div class="invalid-hint text-danger">{{ error }}</div>{% endfor %}
+      </div>
+
+      <div class="col-md-4">
+        {{ form.status.label(class="form-label") }}
+        {{ form.status(class="form-select") }}
+        {% for error in form.status.errors %}<div class="invalid-hint text-danger">{{ error }}</div>{% endfor %}
+      </div>
+      
+      <div class="col-md-4">
+        {{ form.order_date.label(class="form-label") }}
+        {{ form.order_date(class="form-control") }}
+        {% for error in form.order_date.errors %}<div class="invalid-hint text-danger">{{ error }}</div>{% endfor %}
+      </div>
+
+      <div class="col-md-4">
+        {{ form.tracking_number.label(class="form-label") }}
+        {{ form.tracking_number(class="form-control", placeholder="ระบุเลขพัสดุ (ถ้ามี)") }}
+        {% for error in form.tracking_number.errors %}<div class="invalid-hint text-danger">{{ error }}</div>{% endfor %}
+      </div>
+
+      <div class="col-12">
+        {{ form.note.label(class="form-label") }}
+        {{ form.note(class="form-control", placeholder="บันทึกหรือโน้ตเพิ่มเติม เช่น ของขวัญวันเกิด, ของใช้จำเป็น ฯลฯ") }}
+        {% for error in form.note.errors %}<div class="invalid-hint text-danger">{{ error }}</div>{% endfor %}
+      </div>
+    </div>
+    
+    <div class="d-flex gap-2 mt-4">
+      {{ form.submit(class="btn btn-primary") }}
+      <a class="btn btn-light" href="{{ url_for('online_orders') }}">ยกเลิก</a>
+    </div>
+  </form>
+</section>
+{% endblock %}

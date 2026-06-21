@@ -45,7 +45,7 @@ class Menu(db.Model):
     )
 
 
-EXPENSE_CATEGORIES = ["อาหาร", "เครื่องดื่ม", "ของว่าง"]
+EXPENSE_CATEGORIES = ["อาหาร", "เครื่องดื่ม", "ของว่าง", "สั่งของออนไลน์"]
 
 
 class Expense(db.Model):
@@ -60,3 +60,23 @@ class Expense(db.Model):
 
     user = db.relationship("User", back_populates="expenses")
     menu = db.relationship("Menu", back_populates="expenses")
+
+
+class OnlineOrder(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey("user.id"), nullable=False, index=True)
+    platform = db.Column(db.String(50), nullable=False)
+    store_name = db.Column(db.String(100), nullable=False)
+    item_name = db.Column(db.String(100), nullable=False)
+    price = db.Column(db.Float, nullable=False)
+    shipping_cost = db.Column(db.Float, nullable=False, default=0.0)
+    status = db.Column(db.String(30), nullable=False, default="สั่งซื้อแล้ว")
+    order_date = db.Column(db.Date, default=date.today, nullable=False)
+    tracking_number = db.Column(db.String(100), nullable=True)
+    note = db.Column(db.String(200), nullable=True)
+    expense_id = db.Column(db.Integer, db.ForeignKey("expense.id", ondelete="SET NULL"), nullable=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+
+    user = db.relationship("User", backref=db.backref("online_orders", cascade="all, delete-orphan"))
+    expense = db.relationship("Expense", backref=db.backref("online_order", uselist=False))
+

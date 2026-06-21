@@ -28,7 +28,12 @@ class ExpenseForm(FlaskForm):
     price = FloatField("ราคา", validators=[DataRequired(), NumberRange(min=0)])
     category = SelectField(
         "หมวดหมู่",
-        choices=[("อาหาร", "อาหาร"), ("เครื่องดื่ม", "เครื่องดื่ม"), ("ของว่าง", "ของว่าง")],
+        choices=[
+            ("อาหาร", "อาหาร"),
+            ("เครื่องดื่ม", "เครื่องดื่ม"),
+            ("ของว่าง", "ของว่าง"),
+            ("สั่งของออนไลน์", "สั่งของออนไลน์"),
+        ],
         validators=[DataRequired()],
     )
     expense_date = DateField("วันที่", default=date.today, validators=[DataRequired()])
@@ -53,4 +58,43 @@ class ProfileForm(FlaskForm):
         validators=[Optional(), EqualTo("new_password", message="รหัสผ่านใหม่ไม่ตรงกัน")]
     )
     submit = SubmitField("บันทึกการเปลี่ยนแปลง")
+
+
+class OnlineOrderForm(FlaskForm):
+    platform = SelectField(
+        "แพลตฟอร์ม / ช่องทาง",
+        choices=[
+            ("Shopee", "Shopee"),
+            ("Lazada", "Lazada"),
+            ("TikTok Shop", "TikTok Shop"),
+            ("Grab", "Grab"),
+            ("Lineman", "Lineman"),
+            ("Foodpanda", "Foodpanda"),
+            ("TikTok", "TikTok"),
+            ("Facebook", "Facebook"),
+            ("Instagram", "Instagram"),
+            ("อื่นๆ", "อื่นๆ"),
+        ],
+        validators=[DataRequired()],
+    )
+    store_name = StringField("ชื่อร้านค้า", validators=[DataRequired(), Length(max=100)])
+    item_name = StringField("ชื่อสินค้า / รายการ", validators=[DataRequired(), Length(max=100)])
+    price = FloatField("ราคาสินค้า (บาท)", validators=[DataRequired(), NumberRange(min=0)])
+    shipping_cost = FloatField("ค่าจัดส่ง (บาท)", default=0.0, validators=[Optional(), NumberRange(min=0)])
+    status = SelectField(
+        "สถานะการสั่งซื้อ",
+        choices=[
+            ("สั่งซื้อแล้ว", "สั่งซื้อแล้ว"),
+            ("กำลังจัดส่ง", "กำลังจัดส่ง"),
+            ("ได้รับแล้ว", "ได้รับแล้ว"),
+            ("ยกเลิก", "ยกเลิก"),
+        ],
+        default="สั่งซื้อแล้ว",
+        validators=[DataRequired()],
+    )
+    order_date = DateField("วันที่สั่งซื้อ", default=date.today, validators=[DataRequired()])
+    tracking_number = StringField("เลขพัสดุ (Tracking Number)", validators=[Optional(), Length(max=100)])
+    note = StringField("หมายเหตุ / โน้ตเพิ่มเติม", validators=[Optional(), Length(max=200)])
+    submit = SubmitField("บันทึกรายการสั่งซื้อ")
+
 

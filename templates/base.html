@@ -71,6 +71,9 @@
         <a class="nav-link {% if request.endpoint == 'history' %}active{% endif %}" href="{{ url_for('history') }}">
           <i class="bi bi-clock-history"></i> ประวัติ
         </a>
+        <a class="nav-link {% if request.endpoint in ['online_orders', 'add_online_order', 'edit_online_order'] %}active{% endif %}" href="{{ url_for('online_orders') }}">
+          <i class="bi bi-cart"></i> สั่งของออนไลน์
+        </a>
         <a class="nav-link {% if request.endpoint == 'manage_menus' %}active{% endif %}" href="{{ url_for('manage_menus') }}">
           <i class="bi bi-shop"></i> จัดการร้านและเมนู
         </a>

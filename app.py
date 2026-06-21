@@ -19,8 +19,8 @@ from flask_wtf import CSRFProtect
 from sqlalchemy import extract, func
 
 from config import Config
-from forms import BudgetForm, ExpenseForm, LoginForm, RegisterForm, ProfileForm
-from models import EXPENSE_CATEGORIES, Expense, Menu, Restaurant, User, db
+from forms import BudgetForm, ExpenseForm, LoginForm, RegisterForm, ProfileForm, OnlineOrderForm
+from models import EXPENSE_CATEGORIES, Expense, Menu, Restaurant, User, db, OnlineOrder
 
 
 csrf = CSRFProtect()
@@ -53,7 +53,11 @@ MENU_SEED = {
         ("ผลไม้", 20),
         ("กำหนดเอง", 0),
     ],
+    "สั่งของออนไลน์": [
+        ("สั่งของออนไลน์", 0),
+    ],
 }
+
 
 
 def create_app():
@@ -378,6 +382,9 @@ def register_routes(app):
     @login_required
     def edit_expense(expense_id):
         expense = Expense.query.filter_by(id=expense_id, user_id=session["user_id"]).first_or_404()
+        if expense.online_order:
+            flash("รายการนี้เป็นรายการสั่งของออนไลน์ กรุณาแก้ไขผ่านหน้าสั่งของออนไลน์", "info")
+            return redirect(url_for("edit_online_order", order_id=expense.online_order.id))
         form = ExpenseForm(obj=expense)
         if request.method == "GET":
             form.restaurant_id.data = expense.menu.restaurant_id
@@ -404,6 +411,8 @@ def register_routes(app):
     @login_required
     def delete_expense(expense_id):
         expense = Expense.query.filter_by(id=expense_id, user_id=session["user_id"]).first_or_404()
+        if expense.online_order:
+            db.session.delete(expense.online_order)
         db.session.delete(expense)
         db.session.commit()
         flash("ลบรายการแล้ว", "info")
@@ -532,6 +541,261 @@ def register_routes(app):
         total_spent = db.session.query(func.coalesce(func.sum(Expense.price), 0)).filter(Expense.user_id == user.id).scalar()
         
         return render_template("profile.html", form=form, total_expenses=total_expenses, total_spent=total_spent, today=date.today())
+
+    @app.route("/online-orders")
+    @login_required
+    def online_orders():
+        page = request.args.get("page", 1, type=int)
+        search_date = request.args.get("date", "", type=str)
+        platform = request.args.get("platform", "", type=str)
+        status = request.args.get("status", "", type=str)
+
+        query = OnlineOrder.query.filter_by(user_id=session["user_id"])
+        if search_date:
+            try:
+                parsed_date = datetime.strptime(search_date, "%Y-%m-%d").date()
+                query = query.filter(OnlineOrder.order_date == parsed_date)
+            except ValueError:
+                flash("รูปแบบวันที่ไม่ถูกต้อง", "warning")
+        if platform:
+            query = query.filter(OnlineOrder.platform == platform)
+        if status:
+            query = query.filter(OnlineOrder.status == status)
+
+        pagination = query.order_by(OnlineOrder.order_date.desc(), OnlineOrder.created_at.desc()).paginate(
+            page=page,
+            per_page=app.config["ITEMS_PER_PAGE"],
+            error_out=False,
+        )
+
+        platforms = ["Shopee", "Lazada", "TikTok Shop", "Grab", "Lineman", "Foodpanda", "TikTok", "Facebook", "Instagram", "อื่นๆ"]
+        statuses = ["สั่งซื้อแล้ว", "กำลังจัดส่ง", "ได้รับแล้ว", "ยกเลิก"]
+
+        return render_template(
+            "online_orders.html",
+            pagination=pagination,
+            search_date=search_date,
+            platform=platform,
+            status=status,
+            platforms=platforms,
+            statuses=statuses,
+        )
+
+    @app.route("/online-orders/add", methods=["GET", "POST"])
+    @login_required
+    def add_online_order():
+        form = OnlineOrderForm()
+        if form.validate_on_submit():
+            order = OnlineOrder(
+                user_id=session["user_id"],
+                platform=form.platform.data,
+                store_name=form.store_name.data.strip(),
+                item_name=form.item_name.data.strip(),
+                price=form.price.data,
+                shipping_cost=form.shipping_cost.data or 0.0,
+                status=form.status.data,
+                order_date=form.order_date.data,
+                tracking_number=form.tracking_number.data.strip() if form.tracking_number.data else None,
+                note=form.note.data.strip() if form.note.data else None,
+            )
+            db.session.add(order)
+            db.session.flush()
+
+            if order.status != "ยกเลิก":
+                restaurant = Restaurant.query.filter_by(name="สั่งของออนไลน์").first()
+                if not restaurant:
+                    restaurant = Restaurant(name="สั่งของออนไลน์")
+                    db.session.add(restaurant)
+                    db.session.flush()
+                menu = Menu.query.filter_by(restaurant_id=restaurant.id, menu_name="สั่งของออนไลน์").first()
+                if not menu:
+                    menu = Menu(restaurant=restaurant, menu_name="สั่งของออนไลน์", price=0)
+                    db.session.add(menu)
+                    db.session.flush()
+
+                total_price = order.price + order.shipping_cost
+                note_parts = [f"[{order.platform}] ร้าน: {order.store_name}", f"สินค้า: {order.item_name}"]
+                if order.tracking_number:
+                    note_parts.append(f"เลขพัสดุ: {order.tracking_number}")
+                if order.note:
+                    note_parts.append(f"หมายเหตุ: {order.note}")
+                
+                expense = Expense(
+                    user_id=session["user_id"],
+                    menu_id=menu.id,
+                    price=total_price,
+                    category="สั่งของออนไลน์",
+                    note=" | ".join(note_parts)[:200],
+                    expense_date=order.order_date,
+                )
+                db.session.add(expense)
+                db.session.flush()
+                order.expense_id = expense.id
+
+            db.session.commit()
+            flash("บันทึกรายการสั่งของออนไลน์และบันทึกรายจ่ายสำเร็จ", "success")
+            return redirect(url_for("online_orders"))
+        return render_template("add_online_order.html", form=form)
+
+    @app.route("/online-orders/<int:order_id>/edit", methods=["GET", "POST"])
+    @login_required
+    def edit_online_order(order_id):
+        order = OnlineOrder.query.filter_by(id=order_id, user_id=session["user_id"]).first_or_404()
+        form = OnlineOrderForm(obj=order)
+        if form.validate_on_submit():
+            order.platform = form.platform.data
+            order.store_name = form.store_name.data.strip()
+            order.item_name = form.item_name.data.strip()
+            order.price = form.price.data
+            order.shipping_cost = form.shipping_cost.data or 0.0
+            order.status = form.status.data
+            order.order_date = form.order_date.data
+            order.tracking_number = form.tracking_number.data.strip() if form.tracking_number.data else None
+            order.note = form.note.data.strip() if form.note.data else None
+
+            if order.status == "ยกเลิก":
+                if order.expense_id:
+                    expense = db.session.get(Expense, order.expense_id)
+                    if expense:
+                        db.session.delete(expense)
+                    order.expense_id = None
+            else:
+                restaurant = Restaurant.query.filter_by(name="สั่งของออนไลน์").first()
+                if not restaurant:
+                    restaurant = Restaurant(name="สั่งของออนไลน์")
+                    db.session.add(restaurant)
+                    db.session.flush()
+                menu = Menu.query.filter_by(restaurant_id=restaurant.id, menu_name="สั่งของออนไลน์").first()
+                if not menu:
+                    menu = Menu(restaurant=restaurant, menu_name="สั่งของออนไลน์", price=0)
+                    db.session.add(menu)
+                    db.session.flush()
+
+                total_price = order.price + order.shipping_cost
+                note_parts = [f"[{order.platform}] ร้าน: {order.store_name}", f"สินค้า: {order.item_name}"]
+                if order.tracking_number:
+                    note_parts.append(f"เลขพัสดุ: {order.tracking_number}")
+                if order.note:
+                    note_parts.append(f"หมายเหตุ: {order.note}")
+
+                if order.expense_id:
+                    expense = db.session.get(Expense, order.expense_id)
+                    if expense:
+                        expense.price = total_price
+                        expense.note = " | ".join(note_parts)[:200]
+                        expense.expense_date = order.order_date
+                    else:
+                        expense = Expense(
+                            user_id=session["user_id"],
+                            menu_id=menu.id,
+                            price=total_price,
+                            category="สั่งของออนไลน์",
+                            note=" | ".join(note_parts)[:200],
+                            expense_date=order.order_date,
+                        )
+                        db.session.add(expense)
+                        db.session.flush()
+                        order.expense_id = expense.id
+                else:
+                    expense = Expense(
+                        user_id=session["user_id"],
+                        menu_id=menu.id,
+                        price=total_price,
+                        category="สั่งของออนไลน์",
+                        note=" | ".join(note_parts)[:200],
+                        expense_date=order.order_date,
+                    )
+                    db.session.add(expense)
+                    db.session.flush()
+                    order.expense_id = expense.id
+
+            db.session.commit()
+            flash("แก้ไขรายการสั่งของออนไลน์สำเร็จ", "success")
+            return redirect(url_for("online_orders"))
+        return render_template("add_online_order.html", form=form, order=order)
+
+    @app.route("/online-orders/<int:order_id>/delete", methods=["POST"])
+    @login_required
+    def delete_online_order(order_id):
+        order = OnlineOrder.query.filter_by(id=order_id, user_id=session["user_id"]).first_or_404()
+        if order.expense_id:
+            expense = db.session.get(Expense, order.expense_id)
+            if expense:
+                db.session.delete(expense)
+        db.session.delete(order)
+        db.session.commit()
+        flash("ลบรายการสั่งของออนไลน์แล้ว", "info")
+        return redirect(url_for("online_orders"))
+
+    @app.route("/online-orders/<int:order_id>/status", methods=["POST"])
+    @login_required
+    def update_order_status(order_id):
+        order = OnlineOrder.query.filter_by(id=order_id, user_id=session["user_id"]).first_or_404()
+        new_status = request.form.get("status")
+        valid_statuses = ["สั่งซื้อแล้ว", "กำลังจัดส่ง", "ได้รับแล้ว", "ยกเลิก"]
+        
+        if new_status in valid_statuses:
+            order.status = new_status
+            
+            if order.status == "ยกเลิก":
+                if order.expense_id:
+                    expense = db.session.get(Expense, order.expense_id)
+                    if expense:
+                        db.session.delete(expense)
+                    order.expense_id = None
+            else:
+                restaurant = Restaurant.query.filter_by(name="สั่งของออนไลน์").first()
+                if not restaurant:
+                    restaurant = Restaurant(name="สั่งของออนไลน์")
+                    db.session.add(restaurant)
+                    db.session.flush()
+                menu = Menu.query.filter_by(restaurant_id=restaurant.id, menu_name="สั่งของออนไลน์").first()
+                if not menu:
+                    menu = Menu(restaurant=restaurant, menu_name="สั่งของออนไลน์", price=0)
+                    db.session.add(menu)
+                    db.session.flush()
+
+                total_price = order.price + order.shipping_cost
+                note_parts = [f"[{order.platform}] ร้าน: {order.store_name}", f"สินค้า: {order.item_name}"]
+                if order.tracking_number:
+                    note_parts.append(f"เลขพัสดุ: {order.tracking_number}")
+                if order.note:
+                    note_parts.append(f"หมายเหตุ: {order.note}")
+
+                if order.expense_id:
+                    expense = db.session.get(Expense, order.expense_id)
+                    if expense:
+                        expense.note = " | ".join(note_parts)[:200]
+                    else:
+                        expense = Expense(
+                            user_id=session["user_id"],
+                            menu_id=menu.id,
+                            price=total_price,
+                            category="สั่งของออนไลน์",
+                            note=" | ".join(note_parts)[:200],
+                            expense_date=order.order_date,
+                        )
+                        db.session.add(expense)
+                        db.session.flush()
+                        order.expense_id = expense.id
+                else:
+                    expense = Expense(
+                        user_id=session["user_id"],
+                        menu_id=menu.id,
+                        price=total_price,
+                        category="สั่งของออนไลน์",
+                        note=" | ".join(note_parts)[:200],
+                        expense_date=order.order_date,
+                    )
+                    db.session.add(expense)
+                    db.session.flush()
+                    order.expense_id = expense.id
+                    
+            db.session.commit()
+            flash("อัปเดตสถานะรายการสั่งซื้อเรียบร้อย", "success")
+        else:
+            flash("สถานะไม่ถูกต้อง", "danger")
+        return redirect(url_for("online_orders"))
 
     @app.route("/manage-menus")
     @login_required

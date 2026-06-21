@@ -1,0 +1,149 @@
+{% extends "base.html" %}
+{% block title %}รายการสั่งของออนไลน์{% endblock %}
+{% block content %}
+<div class="animate-in stagger-1">
+  <div class="page-heading">
+    <div>
+      <h1>สั่งของออนไลน์</h1>
+      <p>บันทึกและติดตามสถานะการสั่งซื้อออนไลน์พร้อมคำนวณรายจ่าย</p>
+    </div>
+    <a class="btn btn-primary" href="{{ url_for('add_online_order') }}"><i class="bi bi-plus-lg"></i> บันทึกรายการใหม่</a>
+  </div>
+</div>
+
+<section class="panel mb-4 animate-in stagger-2">
+  <form class="row g-3 align-items-end" method="get">
+    <div class="col-md-3">
+      <label class="form-label" for="date">ค้นหาตามวันที่</label>
+      <input class="form-control" id="date" type="date" name="date" value="{{ search_date or '' }}">
+    </div>
+    <div class="col-md-3">
+      <label class="form-label" for="platform">แพลตฟอร์ม</label>
+      <select class="form-select" id="platform" name="platform">
+        <option value="">ทุกแพลตฟอร์ม</option>
+        {% for plat in platforms %}
+        <option value="{{ plat }}" {% if platform == plat %}selected{% endif %}>{{ plat }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="col-md-3">
+      <label class="form-label" for="status">สถานะ</label>
+      <select class="form-select" id="status" name="status">
+        <option value="">ทุกสถานะ</option>
+        {% for stat in statuses %}
+        <option value="{{ stat }}" {% if status == stat %}selected{% endif %}>{{ stat }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="col-md-3 d-flex gap-2">
+      <button class="btn btn-primary w-100" type="submit"><i class="bi bi-search"></i> ค้นหา</button>
+      <a class="btn btn-light" href="{{ url_for('online_orders') }}">ล้าง</a>
+    </div>
+  </form>
+</section>
+
+<section class="panel animate-in stagger-3">
+  <div class="table-responsive">
+    <table class="table align-middle">
+      <thead>
+        <tr>
+          <th>วันที่สั่งซื้อ</th>
+          <th>แพลตฟอร์ม</th>
+          <th>ร้านค้า</th>
+          <th>รายการสินค้า</th>
+          <th class="text-end">ราคาสินค้า</th>
+          <th class="text-end">ค่าส่ง</th>
+          <th class="text-end">ราคารวม</th>
+          <th class="text-center">สถานะ</th>
+          <th class="text-end">จัดการ</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for order in pagination.items %}
+        <tr>
+          <td>{{ order.order_date.strftime("%d/%m/%Y") }}</td>
+          <td><span class="badge bg-dark">{{ order.platform }}</span></td>
+          <td>{{ order.store_name }}</td>
+          <td>
+            <strong>{{ order.item_name }}</strong>
+            {% if order.tracking_number %}
+            <div class="text-muted small" style="font-size: 0.75rem;"><i class="bi bi-box-seam"></i> {{ order.tracking_number }}</div>
+            {% endif %}
+            {% if order.note %}
+            <div class="text-muted small" style="font-size: 0.75rem; opacity: 0.85;"><i class="bi bi-chat-left-text"></i> {{ order.note }}</div>
+            {% endif %}
+          </td>
+          <td class="text-end">{{ order.price|baht }}</td>
+          <td class="text-end">{{ order.shipping_cost|baht }}</td>
+          <td class="text-end fw-bold text-primary">{{ (order.price + order.shipping_cost)|baht }}</td>
+          <td class="text-center">
+            <div class="btn-group">
+              <button type="button" class="btn btn-sm dropdown-toggle py-0 badge bg-{% if order.status == 'สั่งซื้อแล้ว' %}info{% elif order.status == 'กำลังจัดส่ง' %}warning text-dark{% elif order.status == 'ได้รับแล้ว' %}success{% else %}danger{% endif %}" data-bs-toggle="dropdown" aria-expanded="false">
+                {{ order.status }}
+              </button>
+              <ul class="dropdown-menu dropdown-menu-end" style="font-size: 0.85rem; min-width: 120px;">
+                {% for st in statuses %}
+                <li>
+                  <form method="post" action="{{ url_for('update_order_status', order_id=order.id) }}">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <input type="hidden" name="status" value="{{ st }}">
+                    <button type="submit" class="dropdown-item {% if order.status == st %}active{% endif %}">{{ st }}</button>
+                  </form>
+                </li>
+                {% endfor %}
+              </ul>
+            </div>
+          </td>
+          <td class="text-end">
+            <div class="d-flex justify-content-end gap-1">
+              <a class="btn btn-sm btn-outline-primary" href="{{ url_for('edit_online_order', order_id=order.id) }}"><i class="bi bi-pencil"></i></a>
+              <button class="btn btn-sm btn-outline-danger" data-bs-toggle="modal" data-bs-target="#deleteOrderModal{{ order.id }}"><i class="bi bi-trash"></i></button>
+            </div>
+            
+            <div class="modal fade text-start" id="deleteOrderModal{{ order.id }}" tabindex="-1" aria-hidden="true">
+              <div class="modal-dialog modal-dialog-centered">
+                <div class="modal-content">
+                  <div class="modal-header">
+                    <h5 class="modal-title">ยืนยันการลบรายการ</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                  </div>
+                  <div class="modal-body">
+                    ต้องการลบรายการสั่งซื้อ <strong>{{ order.item_name }}</strong> ใช่หรือไม่?
+                    <p class="text-danger small mt-2 mb-0"><i class="bi bi-exclamation-triangle"></i> รายจ่ายที่บันทึกไว้จะถูกลบไปด้วย</p>
+                  </div>
+                  <div class="modal-footer">
+                    <button type="button" class="btn btn-light" data-bs-dismiss="modal">ยกเลิก</button>
+                    <form method="post" action="{{ url_for('delete_online_order', order_id=order.id) }}">
+                      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                      <button class="btn btn-danger" type="submit">ลบรายการ</button>
+                    </form>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </td>
+        </tr>
+        {% else %}
+        <tr><td colspan="9" class="text-center text-muted py-4">ไม่พบรายการสั่งซื้อ</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  {% if pagination.pages > 1 %}
+  <nav aria-label="pagination" class="mt-3">
+    <ul class="pagination justify-content-end mb-0">
+      {% for page in pagination.iter_pages(left_edge=1, right_edge=1, left_current=2, right_current=2) %}
+        {% if page %}
+        <li class="page-item {% if page == pagination.page %}active{% endif %}">
+          <a class="page-link" href="{{ url_for('online_orders', page=page, date=search_date or '', platform=platform or '', status=status or '') }}">{{ page }}</a>
+        </li>
+        {% else %}
+        <li class="page-item disabled"><span class="page-link">...</span></li>
+        {% endif %}
+      {% endfor %}
+    </ul>
+  </nav>
+  {% endif %}
+</section>
+{% endblock %}
