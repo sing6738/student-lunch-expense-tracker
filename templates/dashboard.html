@@ -11,43 +11,138 @@
   </div>
 </div>
 
-{% if over_budget %}
-<div class="alert alert-danger budget-alert animate-in stagger-1"><i class="bi bi-exclamation-triangle"></i> คุณใช้เงินเกินงบแล้ว</div>
-{% endif %}
-
-<section class="stats-grid animate-in stagger-2">
-  <article class="stat-card">
-    <span>วันนี้</span>
-    <strong>{{ today_total|baht }} บาท</strong>
+<section class="stats-grid animate-in stagger-2 mb-3">
+  <article class="stat-card" style="background: linear-gradient(135deg, #e0f2fe, #bae6fd); color: #0369a1; border: none;">
+    <span>จำนวนวันที่ไปเรียนเดือนนี้</span>
+    <strong style="font-size: 1.6rem;">{{ days_attended }} วัน</strong>
+    <div class="small mt-1 fw-semibold" style="opacity: 0.85;">รายรับ: {{ total_income|baht }} บาท</div>
   </article>
-  <article class="stat-card">
-    <span>สัปดาห์นี้</span>
-    <strong>{{ week_total|baht }} บาท</strong>
+  <article class="stat-card" style="background: linear-gradient(135deg, #fce7f3, #fbcfe8); color: #be185d; border: none;">
+    <span>รายจ่ายรวมเดือนนี้</span>
+    <strong style="font-size: 1.6rem;">{{ month_total|baht }} บาท</strong>
+    <div class="small mt-1 fw-semibold" style="opacity: 0.85;">ใช้ไปทั้งหมด</div>
   </article>
-  <article class="stat-card">
-    <span>เดือนนี้</span>
-    <strong>{{ month_total|baht }} บาท</strong>
+  <article class="stat-card" style="background: linear-gradient(135deg, #dcfce7, #bbf7d0); color: #15803d; border: none;">
+    <span>เงินออมรวมเดือนนี้</span>
+    <strong style="font-size: 1.6rem;">{{ total_savings|baht }} บาท</strong>
+    <div class="small mt-1 fw-semibold" style="opacity: 0.85;">รายรับ - รายจ่าย</div>
   </article>
 </section>
 
-{% if monthly_budget %}
+<!-- เป้าหมายจ่ายบิล 650 บาท -->
 <section class="panel budget-progress-panel animate-in stagger-3">
-  <div class="budget-progress-header">
+  <div class="budget-progress-header mb-2 d-flex justify-content-between align-items-end">
     <div>
-      <span class="budget-label">งบประมาณเดือนนี้</span>
-      <span class="budget-numbers">
-        ใช้ไปแล้ว <strong>{{ month_total|baht }}</strong> / {{ monthly_budget|baht }} บาท
-      </span>
+      <span class="budget-label fw-bold" style="font-size: 1.1rem; color: #334155;"><i class="bi bi-receipt"></i> เป้าหมายจ่ายบิล ({{ bills_goal|baht }} บาท)</span>
+      <div class="text-muted small mt-1">ค่าเน็ตและมือถือ</div>
     </div>
-    <span class="budget-percent {% if budget_percent is not none and budget_percent >= 100 %}over{% elif budget_percent is not none and budget_percent >= 80 %}warn{% endif %}">
-      {{ budget_percent }}%
+    <span class="budget-percent fw-bold {% if bills_progress >= 100 %}text-success{% else %}text-primary{% endif %}" style="font-size: 1.2rem;">
+      {{ bills_progress }}%
     </span>
   </div>
-  <div class="budget-bar-track">
-    <div class="budget-bar-fill {% if budget_percent is not none and budget_percent >= 100 %}over{% elif budget_percent is not none and budget_percent >= 80 %}warn{% endif %}"
-         style="width: {{ budget_percent or 0 }}%"></div>
+  <div class="budget-bar-track mt-3" style="height: 14px; background: #e2e8f0; border-radius: 7px; overflow: hidden; margin-bottom: 12px;">
+    <div class="budget-bar-fill {% if bills_progress >= 100 %}bg-success{% else %}bg-primary{% endif %}"
+         style="width: {{ bills_progress }}%; height: 100%; transition: width 0.8s ease-out; border-radius: 7px;"></div>
+  </div>
+  
+  <div class="text-center mt-3 pt-2" style="border-top: 1px dashed #e2e8f0;">
+    {% if total_savings < bills_goal %}
+      <span class="text-danger fw-semibold" style="font-size: 0.95rem;">
+        <i class="bi bi-info-circle"></i> ขาดอีก <strong style="font-size: 1.1rem;">{{ (bills_goal - total_savings)|baht }}</strong> บาท สำหรับจ่ายบิลเดือนนี้
+      </span>
+    {% else %}
+      <span class="text-success fw-bold" style="font-size: 1rem;">
+        ✅ เก็บเงินจ่ายบิลค่าเน็ตและมือถือครบแล้ว!
+      </span>
+    {% endif %}
   </div>
 </section>
+
+<!-- เงินออมส่วนตัว & เป้าหมายของขวัญ -->
+{% if total_savings > bills_goal or current_user.wishlist_name %}
+<section class="panel animate-in stagger-3 mt-3" style="background: linear-gradient(135deg, #fef08a 0%, #fde047 100%); border: 2px solid #facc15; box-shadow: 0 4px 15px rgba(234, 179, 8, 0.25); border-radius: 1rem; position: relative; overflow: hidden;">
+  <div style="position: absolute; top: -10px; right: -10px; font-size: 4rem; opacity: 0.15; transform: rotate(15deg);">🎁</div>
+  <div class="py-3 px-3 position-relative" style="z-index: 1;">
+    <div class="d-flex justify-content-between align-items-center mb-2">
+      <h3 class="mb-0" style="color: #a16207; font-weight: 700; font-size: 1.1rem;">
+        <i class="bi bi-gift-fill"></i> เป้าหมายของขวัญ
+      </h3>
+      <button class="btn btn-sm btn-light" data-bs-toggle="modal" data-bs-target="#wishlistModal" style="border-radius: 20px; color: #854d0e; font-weight: bold; font-size: 0.8rem;">
+        <i class="bi bi-pencil-square"></i> ตั้งเป้าหมาย
+      </button>
+    </div>
+    
+    {% if current_user.wishlist_name and current_user.wishlist_price %}
+      {% set w_progress = [(personal_savings / current_user.wishlist_price) * 100, 100]|min|round(1) if current_user.wishlist_price > 0 else 0 %}
+      <div class="text-center mt-3">
+        <h4 style="color: #713f12; font-weight: 800;">{{ current_user.wishlist_name }}</h4>
+        <div class="d-flex justify-content-between small fw-bold mt-2" style="color: #854d0e;">
+          <span>เก็บได้: {{ personal_savings|baht }}</span>
+          <span>เป้าหมาย: {{ current_user.wishlist_price|baht }}</span>
+        </div>
+        <div class="budget-bar-track mt-1" style="height: 12px; background: rgba(255,255,255,0.6); border-radius: 6px; overflow: hidden;">
+          <div class="budget-bar-fill {% if w_progress >= 100 %}bg-success{% else %}bg-warning{% endif %}"
+               style="width: {{ w_progress }}%; height: 100%; transition: width 0.8s ease-out;"></div>
+        </div>
+        <div class="mt-2 small fw-bold" style="color: #854d0e;">
+          {% if w_progress >= 100 %}
+            🎉 ยินดีด้วย! ซื้อได้แล้ว!
+          {% else %}
+            สู้ๆ ขาดอีก {{ (current_user.wishlist_price - personal_savings)|baht }} บาท
+          {% endif %}
+        </div>
+      </div>
+    {% else %}
+      <div class="text-center mt-3">
+        <h2 class="mb-0" style="color: #713f12; font-weight: 900; font-size: 2.2rem; text-shadow: 1px 1px 0 rgba(255,255,255,0.5);">
+          {{ personal_savings|baht }} <span style="font-size: 1.2rem; font-weight: 700;">บาท</span>
+        </h2>
+        <p class="mb-0 mt-2 small" style="color: #854d0e; font-weight: 600; background: rgba(255,255,255,0.5); display: inline-block; padding: 4px 12px; border-radius: 20px;">
+          เงินออมส่วนตัวของคุณ ลองตั้งเป้าหมายของที่อยากได้สิ!
+        </p>
+      </div>
+    {% endif %}
+  </div>
+</section>
+
+<!-- Wishlist Modal -->
+<div class="modal fade" id="wishlistModal" tabindex="-1">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <form method="post" action="{{ url_for('dashboard') }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <!-- Hidden submit button to catch Enter key presses -->
+        <button type="submit" class="d-none" aria-hidden="true"></button>
+        
+        <div class="modal-header">
+          <h5 class="modal-title">ตั้งเป้าหมายของขวัญ</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <div class="mb-3">
+            <label class="form-label">ของที่อยากได้</label>
+            <input type="text" class="form-control" name="wishlist_name" value="{{ current_user.wishlist_name or '' }}" required placeholder="เช่น รองเท้าผ้าใบ">
+          </div>
+          <div class="mb-3">
+            <label class="form-label">ราคาเป้าหมาย (บาท)</label>
+            <input type="number" class="form-control" name="wishlist_price" value="{{ current_user.wishlist_price or '' }}" required step="0.01" min="1" placeholder="เช่น 1500">
+          </div>
+        </div>
+        <div class="modal-footer d-flex justify-content-between">
+          {% if current_user.wishlist_name %}
+            <button type="submit" name="clear_wishlist" value="1" class="btn btn-outline-danger">ยกเลิกเป้าหมาย</button>
+          {% else %}
+            <div></div>
+          {% endif %}
+          <div>
+            <button type="button" class="btn btn-light" data-bs-dismiss="modal">ปิด</button>
+            <button type="submit" name="save_wishlist" value="1" class="btn btn-primary">บันทึก</button>
+          </div>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
 {% endif %}
 
 <div class="row g-4 mt-1 animate-in stagger-4">
@@ -108,6 +203,79 @@
         {% else %}
         <div class="text-muted py-3">ยังไม่มีรายการ</div>
         {% endfor %}
+      </div>
+    </section>
+  </div>
+</div>
+
+<div class="row g-4 mt-4 animate-in stagger-5">
+  <div class="col-lg-6">
+    <section class="panel">
+      <div class="panel-title">
+        <h2><i class="bi bi-pie-chart"></i> สัดส่วนการใช้จ่ายเดือนนี้</h2>
+      </div>
+      <div class="mt-3">
+        {% if category_totals %}
+          {% set total_cat = month_total|float %}
+          {% for cat, amount in category_totals.items() %}
+            {% set pct = (amount / total_cat * 100) if total_cat > 0 else 0 %}
+            <div class="mb-3">
+              <div class="d-flex justify-content-between small mb-1 fw-bold">
+                <span>{{ cat }}</span>
+                <span>{{ amount|baht }} บาท ({{ pct|round(1) }}%)</span>
+              </div>
+              <div class="progress" style="height: 10px; border-radius: 5px;">
+                <div class="progress-bar {% if loop.index0 % 4 == 0 %}bg-primary{% elif loop.index0 % 4 == 1 %}bg-success{% elif loop.index0 % 4 == 2 %}bg-warning{% else %}bg-danger{% endif %}" style="width: {{ pct }}%"></div>
+              </div>
+            </div>
+          {% endfor %}
+        {% else %}
+          <div class="text-muted text-center py-3">ยังไม่มีข้อมูลในเดือนนี้</div>
+        {% endif %}
+      </div>
+    </section>
+  </div>
+  
+  <div class="col-lg-6">
+    <section class="panel h-100">
+      <div class="panel-title mb-3">
+        <h2><i class="bi bi-calendar3"></i> ปฏิทินวันไปเรียน ({{ today.strftime('%b %Y') }})</h2>
+      </div>
+      <div class="table-responsive">
+        <table class="table table-bordered text-center table-sm mb-0" style="table-layout: fixed; min-width: 300px;">
+          <thead class="table-light small">
+            <tr>
+              <th>จ.</th><th>อ.</th><th>พ.</th><th>พฤ.</th><th>ศ.</th><th>ส.</th><th>อา.</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for week in cal_month %}
+              <tr>
+                {% for day in week %}
+                  {% if day != 0 %}
+                    {% set d_str = today.replace(day=day).strftime("%Y-%m-%d") %}
+                    {% set daily_exp = calendar_data.get(d_str) %}
+                    <td class="align-middle {% if daily_exp is not none %}bg-success bg-opacity-10{% endif %}" style="height: 55px; position: relative; padding: 2px;">
+                      <div class="fw-bold {% if d_str == today.strftime('%Y-%m-%d') %}text-primary text-decoration-underline{% endif %}" style="font-size: 0.9rem;">{{ day }}</div>
+                      {% if daily_exp is not none %}
+                        {% if daily_exp <= 40 %}
+                          <div style="position: absolute; top: -2px; right: -2px; font-size: 1rem;" title="ยอดเยี่ยม! ใช้เงินน้อยกว่า 40 บาท">🌟</div>
+                        {% endif %}
+                        <div class="small fw-bold" style="font-size: 0.75rem; color: #15803d; line-height: 1;">{{ daily_exp|int }}฿</div>
+                      {% endif %}
+                    </td>
+                  {% else %}
+                    <td class="bg-light"></td>
+                  {% endif %}
+                {% endfor %}
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      <div class="small text-muted mt-3 text-center">
+        <span class="d-inline-block me-3"><i class="bi bi-square-fill text-success opacity-50"></i> วันไปเรียน</span>
+        <span class="d-inline-block">🌟 คุมงบได้ต่ำกว่า 40฿</span>
       </div>
     </section>
   </div>

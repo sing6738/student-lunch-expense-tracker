@@ -13,6 +13,8 @@ class User(db.Model):
     email = db.Column(db.String(120), unique=True, nullable=False, index=True)
     password_hash = db.Column(db.String(255), nullable=False)
     daily_budget = db.Column(db.Float, nullable=True)
+    wishlist_name = db.Column(db.String(100), nullable=True)
+    wishlist_price = db.Column(db.Float, nullable=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
 
     expenses = db.relationship("Expense", back_populates="user", cascade="all, delete-orphan")
