@@ -1,0 +1,147 @@
+{% extends "base.html" %}
+{% block title %}Dashboard{% endblock %}
+{% block content %}
+<div class="animate-in stagger-1">
+  <div class="page-heading">
+    <div>
+      <h1>Dashboard</h1>
+      <p>สรุปรายจ่ายมื้อกลางวันของคุณ</p>
+    </div>
+    <a class="btn btn-primary" href="{{ url_for('add_expense') }}"><i class="bi bi-plus-lg"></i> เพิ่มรายการ</a>
+  </div>
+</div>
+
+<section class="stats-grid animate-in stagger-2 mb-3">
+  <article class="stat-card" style="background: linear-gradient(135deg, #e0f2fe, #bae6fd); color: #0369a1; border: none;">
+    <span>จำนวนวันที่ไปเรียนเดือนนี้</span>
+    <strong style="font-size: 1.6rem;">{{ days_attended }} วัน</strong>
+    <div class="small mt-1 fw-semibold" style="opacity: 0.85;">รายรับ: {{ total_income|baht }} บาท</div>
+  </article>
+  <article class="stat-card" style="background: linear-gradient(135deg, #fce7f3, #fbcfe8); color: #be185d; border: none;">
+    <span>รายจ่ายรวมเดือนนี้</span>
+    <strong style="font-size: 1.6rem;">{{ month_total|baht }} บาท</strong>
+    <div class="small mt-1 fw-semibold" style="opacity: 0.85;">ใช้ไปทั้งหมด</div>
+  </article>
+  <article class="stat-card" style="background: linear-gradient(135deg, #dcfce7, #bbf7d0); color: #15803d; border: none;">
+    <span>เงินออมรวมเดือนนี้</span>
+    <strong style="font-size: 1.6rem;">{{ total_savings|baht }} บาท</strong>
+    <div class="small mt-1 fw-semibold" style="opacity: 0.85;">รายรับ - รายจ่าย</div>
+  </article>
+</section>
+
+<!-- เป้าหมายจ่ายบิล 650 บาท -->
+<section class="panel budget-progress-panel animate-in stagger-3">
+  <div class="budget-progress-header mb-2 d-flex justify-content-between align-items-end">
+    <div>
+      <span class="budget-label fw-bold" style="font-size: 1.1rem; color: #334155;"><i class="bi bi-receipt"></i> เป้าหมายจ่ายบิล ({{ bills_goal|baht }} บาท)</span>
+      <div class="text-muted small mt-1">ค่าเน็ตและมือถือ</div>
+    </div>
+    <span class="budget-percent fw-bold {% if bills_progress >= 100 %}text-success{% else %}text-primary{% endif %}" style="font-size: 1.2rem;">
+      {{ bills_progress }}%
+    </span>
+  </div>
+  <div class="budget-bar-track mt-3" style="height: 14px; background: #e2e8f0; border-radius: 7px; overflow: hidden; margin-bottom: 12px;">
+    <div class="budget-bar-fill {% if bills_progress >= 100 %}bg-success{% else %}bg-primary{% endif %}"
+         style="width: {{ bills_progress }}%; height: 100%; transition: width 0.8s ease-out; border-radius: 7px;"></div>
+  </div>
+  
+  <div class="text-center mt-3 pt-2" style="border-top: 1px dashed #e2e8f0;">
+    {% if total_savings < bills_goal %}
+      <span class="text-danger fw-semibold" style="font-size: 0.95rem;">
+        <i class="bi bi-info-circle"></i> ขาดอีก <strong style="font-size: 1.1rem;">{{ (bills_goal - total_savings)|baht }}</strong> บาท สำหรับจ่ายบิลเดือนนี้
+      </span>
+    {% else %}
+      <span class="text-success fw-bold" style="font-size: 1rem;">
+        ✅ เก็บเงินจ่ายบิลค่าเน็ตและมือถือครบแล้ว!
+      </span>
+    {% endif %}
+  </div>
+</section>
+
+<!-- เงินออมส่วนตัว -->
+{% if total_savings > bills_goal %}
+<section class="panel animate-in stagger-3 mt-3 text-center" style="background: linear-gradient(135deg, #fef08a 0%, #fde047 100%); border: 2px solid #facc15; box-shadow: 0 4px 15px rgba(234, 179, 8, 0.25); border-radius: 1rem; position: relative; overflow: hidden;">
+  <div style="position: absolute; top: -10px; right: -10px; font-size: 4rem; opacity: 0.15; transform: rotate(15deg);">💰</div>
+  <div class="py-3 position-relative" style="z-index: 1;">
+    <h3 class="mb-2" style="color: #a16207; font-weight: 700; font-size: 1.1rem;">
+      <i class="bi bi-piggy-bank-fill"></i> เงินออมส่วนตัวของคุณ
+    </h3>
+    <h2 class="mb-0" style="color: #713f12; font-weight: 900; font-size: 2.5rem; text-shadow: 1px 1px 0 rgba(255,255,255,0.5);">
+      {{ personal_savings|baht }} <span style="font-size: 1.2rem; font-weight: 700;">บาท</span>
+    </h2>
+    <p class="mb-0 mt-2 small" style="color: #854d0e; font-weight: 600; background: rgba(255,255,255,0.5); display: inline-block; padding: 4px 12px; border-radius: 20px;">
+      เก่งมาก! นี่คือเงินที่เหลือเก็บเข้ากระปุก
+    </p>
+  </div>
+</section>
+{% endif %}
+
+<div class="row g-4 mt-1 animate-in stagger-4">
+  <div class="col-lg-7">
+    <section class="panel chart-panel">
+      <div class="panel-title">
+        <h2>กราฟ 7 วันล่าสุด</h2>
+      </div>
+      <canvas id="dashboardChart"></canvas>
+    </section>
+  </div>
+  <div class="col-lg-5">
+    <section class="panel">
+      <div class="panel-title">
+        <h2>รายการล่าสุด</h2>
+      </div>
+      <div class="list-group list-group-flush latest-list">
+        {% for expense in latest_expenses %}
+        <div class="list-group-item px-0 d-flex justify-content-between align-items-center">
+          <div>
+            <strong>{{ expense.menu.restaurant.name }}</strong>
+            <div class="text-muted small">
+              {{ expense.menu.menu_name }} · {{ expense.expense_date.strftime("%d/%m/%Y") }}
+              {% if expense.note %}
+              · <span style="opacity: 0.85;"><i class="bi bi-chat-left-text"></i> {{ expense.note }}</span>
+              {% endif %}
+            </div>
+          </div>
+          <div class="d-flex align-items-center gap-2">
+            <span class="amount">{{ expense.price|baht }}</span>
+            <a class="quick-action-btn edit" href="{{ url_for('edit_expense', expense_id=expense.id) }}" title="แก้ไข">
+              <i class="bi bi-pencil"></i>
+            </a>
+            <button class="quick-action-btn del" data-bs-toggle="modal" data-bs-target="#qDelModal{{ expense.id }}" title="ลบ">
+              <i class="bi bi-trash"></i>
+            </button>
+          </div>
+        </div>
+
+        <div class="modal fade" id="qDelModal{{ expense.id }}" tabindex="-1" aria-hidden="true">
+          <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content text-start">
+              <div class="modal-header">
+                <h5 class="modal-title">ยืนยันการลบ</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+              </div>
+              <div class="modal-body">ต้องการลบรายการ {{ expense.menu.restaurant.name }} - {{ expense.menu.menu_name }} ใช่ไหม?</div>
+              <div class="modal-footer">
+                <button type="button" class="btn btn-light" data-bs-dismiss="modal">ยกเลิก</button>
+                <form method="post" action="{{ url_for('delete_expense', expense_id=expense.id) }}">
+                  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                  <button class="btn btn-danger" type="submit">ลบรายการ</button>
+                </form>
+              </div>
+            </div>
+          </div>
+        </div>
+        {% else %}
+        <div class="text-muted py-3">ยังไม่มีรายการ</div>
+        {% endfor %}
+      </div>
+    </section>
+  </div>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+  window.dashboardChartData = {{ chart_data|tojson }};
+</script>
+<script src="{{ url_for('static', filename='js/charts.js') }}"></script>
+{% endblock %}
