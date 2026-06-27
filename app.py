@@ -1292,10 +1292,14 @@ def register_routes(app):
             else:
                 wishlist_name = request.form.get("wishlist_name")
                 wishlist_price = request.form.get("wishlist_price")
-                if wishlist_name and wishlist_price:
+                if wishlist_name:
                     try:
                         user.wishlist_name = wishlist_name.strip()
-                        user.wishlist_price = float(wishlist_price)
+                        # If wishlist_price is empty, None, or only whitespace, default to 0.0
+                        if not wishlist_price or not str(wishlist_price).strip():
+                            user.wishlist_price = 0.0
+                        else:
+                            user.wishlist_price = float(wishlist_price)
                         db.session.commit()
                         flash("ตั้งเป้าหมายของขวัญเรียบร้อยแล้ว", "success")
                     except ValueError:
