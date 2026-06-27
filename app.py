@@ -355,13 +355,35 @@ def register_routes(app):
             .limit(10)
             .all()
         )
-        over_budget = user.daily_budget is not None and today_total > user.daily_budget
+        
+        # Calculate actual income based on days attended (days with expenses in this month)
+        month_expenses = Expense.query.filter(
+            Expense.user_id == user.id,
+            Expense.expense_date >= month_start,
+            Expense.expense_date <= today
+        ).all()
 
-        # Monthly budget progress
+        days_attended_set = set(exp.expense_date for exp in month_expenses)
+        days_attended = len(days_attended_set)
+        
+        total_income = days_attended * 100
+        total_savings = total_income - float(month_total or 0)
+        
+        bills_goal = 650
+        bills_saved = min(total_savings, bills_goal) if total_savings > 0 else 0
+        bills_progress = min(round((bills_saved / bills_goal) * 100, 1), 100) if bills_goal > 0 else 0
+        personal_savings = total_savings - bills_goal if total_savings > bills_goal else 0
+
+        # Spending Insights by Category
+        category_totals = {}
+        calendar_data = {}
+        for exp in month_expenses:
+            category_totals[exp.category] = category_totals.get(exp.category, 0) + exp.price
+            d_str = exp.expense_date.strftime("%Y-%m-%d")
+            calendar_data[d_str] = calendar_data.get(d_str, 0) + exp.price
+            
         import calendar
-        days_in_month = calendar.monthrange(today.year, today.month)[1]
-        monthly_budget = (user.daily_budget * days_in_month) if user.daily_budget else None
-        budget_percent = min(round(float(month_total) / float(monthly_budget) * 100, 1), 100) if monthly_budget else None
+        cal_month = calendar.monthcalendar(today.year, today.month)
 
         return render_template(
             "dashboard.html",
@@ -370,9 +392,17 @@ def register_routes(app):
             month_total=month_total,
             latest_expenses=latest_expenses,
             chart_data=dashboard_chart_data(user.id),
-            over_budget=over_budget,
-            monthly_budget=monthly_budget,
-            budget_percent=budget_percent,
+            days_attended=days_attended,
+            total_income=total_income,
+            total_savings=total_savings,
+            bills_goal=bills_goal,
+            bills_saved=bills_saved,
+            bills_progress=bills_progress,
+            personal_savings=personal_savings,
+            category_totals=category_totals,
+            calendar_data=calendar_data,
+            cal_month=cal_month,
+            today=today
         )
 
     @app.route("/expenses/add", methods=["GET", "POST"])
