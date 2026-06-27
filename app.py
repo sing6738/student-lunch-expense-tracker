@@ -84,9 +84,7 @@ def register_error_handlers(app):
     @app.errorhandler(500)
     def internal_error(error):
         db.session.rollback()
-        import traceback
-        err_msg = traceback.format_exc()
-        return f"<h1>Internal Server Error</h1><pre>{err_msg}</pre>", 500
+        return render_template("errors/500.html"), 500
 
 
 def seed_restaurants_and_menus():
