@@ -12,20 +12,20 @@
 </div>
 
 <section class="stats-grid animate-in stagger-2 mb-3">
-  <article class="stat-card" style="background: linear-gradient(135deg, #e0f2fe, #bae6fd); color: #0369a1; border: none;">
-    <span>จำนวนวันที่ไปเรียนเดือนนี้</span>
-    <strong style="font-size: 1.6rem;">{{ days_attended }} วัน</strong>
-    <div class="small mt-1 fw-semibold" style="opacity: 0.85;">รายรับ: {{ total_income|baht }} บาท</div>
+  <article class="stat-card" style="background: linear-gradient(135deg, rgba(56, 189, 248, 0.12), rgba(56, 189, 248, 0.03)); border: 1px solid rgba(56, 189, 248, 0.25); box-shadow: 0 8px 32px 0 rgba(56, 189, 248, 0.15);">
+    <span style="color: rgba(255, 255, 255, 0.7); font-weight: 500;">จำนวนวันที่ไปเรียนเดือนนี้</span>
+    <strong style="font-size: 1.8rem; color: #38bdf8; text-shadow: 0 0 10px rgba(56, 189, 248, 0.3);">{{ days_attended }} วัน</strong>
+    <div class="small mt-1 fw-semibold" style="color: #bae6fd; opacity: 0.9;">รายรับ: {{ total_income|baht }} บาท</div>
   </article>
-  <article class="stat-card" style="background: linear-gradient(135deg, #fce7f3, #fbcfe8); color: #be185d; border: none;">
-    <span>รายจ่ายรวมเดือนนี้</span>
-    <strong style="font-size: 1.6rem;">{{ month_total|baht }} บาท</strong>
-    <div class="small mt-1 fw-semibold" style="opacity: 0.85;">ใช้ไปทั้งหมด</div>
+  <article class="stat-card" style="background: linear-gradient(135deg, rgba(244, 63, 94, 0.12), rgba(244, 63, 94, 0.03)); border: 1px solid rgba(244, 63, 94, 0.25); box-shadow: 0 8px 32px 0 rgba(244, 63, 94, 0.15);">
+    <span style="color: rgba(255, 255, 255, 0.7); font-weight: 500;">รายจ่ายรวมเดือนนี้</span>
+    <strong style="font-size: 1.8rem; color: #fb7185; text-shadow: 0 0 10px rgba(244, 63, 94, 0.3);">{{ month_total|baht }} บาท</strong>
+    <div class="small mt-1 fw-semibold" style="color: #fecdd3; opacity: 0.9;">ใช้ไปทั้งหมด</div>
   </article>
-  <article class="stat-card" style="background: linear-gradient(135deg, #dcfce7, #bbf7d0); color: #15803d; border: none;">
-    <span>เงินออมรวมเดือนนี้</span>
-    <strong style="font-size: 1.6rem;">{{ total_savings|baht }} บาท</strong>
-    <div class="small mt-1 fw-semibold" style="opacity: 0.85;">รายรับ - รายจ่าย</div>
+  <article class="stat-card" style="background: linear-gradient(135deg, rgba(52, 211, 153, 0.12), rgba(52, 211, 153, 0.03)); border: 1px solid rgba(52, 211, 153, 0.25); box-shadow: 0 8px 32px 0 rgba(52, 211, 153, 0.15);">
+    <span style="color: rgba(255, 255, 255, 0.7); font-weight: 500;">เงินออมรวมเดือนนี้</span>
+    <strong style="font-size: 1.8rem; color: #34d399; text-shadow: 0 0 10px rgba(52, 211, 153, 0.3);">{{ total_savings|baht }} บาท</strong>
+    <div class="small mt-1 fw-semibold" style="color: #a7f3d0; opacity: 0.9;">รายรับ - รายจ่าย</div>
   </article>
 </section>
 
@@ -159,9 +159,9 @@
       <div class="panel-title">
         <h2>รายการล่าสุด</h2>
       </div>
-      <div class="list-group list-group-flush latest-list">
+      <div class="latest-list">
         {% for expense in latest_expenses %}
-        <div class="list-group-item px-0 d-flex justify-content-between align-items-center">
+        <div class="latest-item d-flex justify-content-between align-items-center">
           <div>
             <strong>{{ expense.menu.restaurant.name }}</strong>
             <div class="text-muted small">
@@ -201,7 +201,7 @@
           </div>
         </div>
         {% else %}
-        <div class="text-muted py-3">ยังไม่มีรายการ</div>
+        <div class="text-muted py-3 text-center">ยังไม่มีรายการ</div>
         {% endfor %}
       </div>
     </section>
