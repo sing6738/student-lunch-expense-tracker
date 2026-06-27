@@ -43,7 +43,7 @@ def migrate():
                 with db.engine.begin() as conn:
                     conn.execute(
                         text(
-                            "ALTER TABLE user ADD COLUMN wishlist_name VARCHAR(100);"
+                            'ALTER TABLE "user" ADD COLUMN wishlist_name VARCHAR(100);'
                         )
                     )
                 print("[OK] เพิ่ม column 'wishlist_name' สำเร็จ")
@@ -57,7 +57,7 @@ def migrate():
                 with db.engine.begin() as conn:
                     conn.execute(
                         text(
-                            "ALTER TABLE user ADD COLUMN wishlist_price FLOAT;"
+                            'ALTER TABLE "user" ADD COLUMN wishlist_price FLOAT;'
                         )
                     )
                 print("[OK] เพิ่ม column 'wishlist_price' สำเร็จ")
