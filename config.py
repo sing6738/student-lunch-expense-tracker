@@ -8,8 +8,11 @@ class Config:
     SECRET_KEY = os.environ.get("SECRET_KEY", "change-this-secret-key-in-production")
     
     db_url = os.environ.get("DATABASE_URL")
-    if db_url and db_url.startswith("postgres://"):
-        db_url = db_url.replace("postgres://", "postgresql://", 1)
+    if db_url:
+        import re
+        db_url = re.sub(r"\s+", "", db_url)
+        if db_url.startswith("postgres://"):
+            db_url = db_url.replace("postgres://", "postgresql://", 1)
         
     SQLALCHEMY_DATABASE_URI = db_url or f"sqlite:///{os.path.join(BASE_DIR, 'database.db')}"
     SQLALCHEMY_TRACK_MODIFICATIONS = False
