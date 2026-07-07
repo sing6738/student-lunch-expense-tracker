@@ -73,6 +73,38 @@ def create_app():
     register_template_filters(app)
     register_error_handlers(app)
     register_routes(app)
+
+    @app.after_request
+    def set_security_headers(response):
+        # บังคับใช้ HTTPS เป็นเวลา 1 ปี + รวม subdomains
+        response.headers['Strict-Transport-Security'] = (
+            'max-age=31536000; includeSubDomains'
+        )
+
+        # ป้องกัน XSS - อนุญาตเฉพาะ resources จาก self และ cdn.jsdelivr.net
+        response.headers['Content-Security-Policy'] = (
+            "default-src 'self'; "
+            "script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; "
+            "style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; "
+            "font-src 'self' https://cdn.jsdelivr.net; "
+            "img-src 'self' data:; "
+            "connect-src 'self'"
+        )
+
+        # ป้องกัน Clickjacking
+        response.headers['X-Frame-Options'] = 'SAMEORIGIN'
+
+        # ควบคุม referrer information
+        response.headers['Referrer-Policy'] = 'strict-origin-when-cross-origin'
+
+        # จำกัดการเข้าถึง browser features ที่ไม่จำเป็น
+        response.headers['Permissions-Policy'] = (
+            'camera=(), microphone=(), geolocation=(), '
+            'payment=(), usb=(), magnetometer=()'
+        )
+
+        return response
+
     return app
 
 

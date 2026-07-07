@@ -3,7 +3,7 @@
    ===================================================== */
 
 /* ---------- Google Font ---------- */
-@import url('https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700&family=Inter:wght@400;500;600;700&display=swap');
+/* Font is now loaded in HTML head via <link> tags for better performance */
 
 /* ---------- Design Tokens ---------- */
 :root {
@@ -37,7 +37,7 @@
   --radius:         20px; /* smoother iOS-style corners */
   --radius-sm:      12px;
   --shadow:         0 8px 32px 0 rgba(0, 0, 0, 0.37);
-  --transition:     0.4s cubic-bezier(0.2, 0.8, 0.2, 1); /* Smoother transition */
+  --transition:     0.25s cubic-bezier(0.2, 0.8, 0.2, 1); /* Smoother, faster transition */
 
   /* Fonts */
   --font-main:      'Sarabun', 'Inter', sans-serif;
@@ -59,6 +59,7 @@
   border-radius: 50%;
   opacity: 0.6;
   animation: move 20s infinite alternate;
+  will-change: transform;
 }
 
 .blob:nth-child(1) {
@@ -152,8 +153,8 @@ a:hover { color: #fff; text-decoration: none; }
    ANIMATIONS
    ===================================================== */
 @keyframes slideUpFade {
-  from { opacity: 0; transform: translateY(30px); filter: blur(10px); }
-  to { opacity: 1; transform: translateY(0); filter: blur(0); }
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 
 @keyframes pulse-glow {
@@ -168,15 +169,40 @@ a:hover { color: #fff; text-decoration: none; }
 
 .animate-in {
   opacity: 0;
-  animation: slideUpFade 0.8s cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
+  will-change: transform, opacity;
+  animation: slideUpFade 0.5s cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
 }
 
 /* Staggered delays for anything inside an animate-in container or direct children */
-.stagger-1 { animation-delay: 0.1s; }
-.stagger-2 { animation-delay: 0.2s; }
-.stagger-3 { animation-delay: 0.3s; }
-.stagger-4 { animation-delay: 0.4s; }
-.stagger-5 { animation-delay: 0.5s; }
+.stagger-1 { animation-delay: 0.05s; }
+.stagger-2 { animation-delay: 0.10s; }
+.stagger-3 { animation-delay: 0.15s; }
+.stagger-4 { animation-delay: 0.20s; }
+.stagger-5 { animation-delay: 0.25s; }
+
+/* ---------- Page Transition ---------- */
+.page-transition-out {
+  animation: pageOut 0.3s cubic-bezier(0.4, 0, 1, 1) forwards;
+  pointer-events: none;
+}
+
+@keyframes pageOut {
+  to { opacity: 0; transform: translateY(-10px); }
+}
+
+@keyframes pageIn {
+  from { opacity: 0; transform: translateY(15px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@media (prefers-reduced-motion) {
+  * {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
 
 /* =====================================================
    APP SHELL  (main)
@@ -295,6 +321,8 @@ a:hover { color: #fff; text-decoration: none; }
 .content-wrap {
   padding: 32px 40px 48px;
   flex: 1;
+  animation: pageIn 0.4s cubic-bezier(0, 0, 0.2, 1) both;
+  will-change: transform, opacity;
 }
 
 /* ---------- Page Heading ---------- */
