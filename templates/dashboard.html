@@ -12,46 +12,45 @@
 </div>
 
 <section class="stats-grid animate-in stagger-2 mb-3">
-  <article class="stat-card" style="background: linear-gradient(135deg, rgba(56, 189, 248, 0.12), rgba(56, 189, 248, 0.03)); border: 1px solid rgba(56, 189, 248, 0.25); box-shadow: 0 8px 32px 0 rgba(56, 189, 248, 0.15);">
-    <span style="color: rgba(255, 255, 255, 0.7); font-weight: 500;">จำนวนวันที่ไปเรียนเดือนนี้</span>
-    <strong style="font-size: 1.8rem; color: #38bdf8; text-shadow: 0 0 10px rgba(56, 189, 248, 0.3);">{{ days_attended }} วัน</strong>
-    <div class="small mt-1 fw-semibold" style="color: #bae6fd; opacity: 0.9;">รายรับ: {{ total_income|baht }} บาท</div>
+  <article class="stat-card stat-blue">
+    <span>จำนวนวันที่ไปเรียนเดือนนี้</span>
+    <strong style="color: #38bdf8; text-shadow: 0 0 16px rgba(56,189,248,0.4);">{{ days_attended }} วัน</strong>
+    <div class="small mt-1" style="color: rgba(186,230,253,0.85); font-weight: 500;">รายรับ: {{ total_income|baht }} บาท</div>
   </article>
-  <article class="stat-card" style="background: linear-gradient(135deg, rgba(244, 63, 94, 0.12), rgba(244, 63, 94, 0.03)); border: 1px solid rgba(244, 63, 94, 0.25); box-shadow: 0 8px 32px 0 rgba(244, 63, 94, 0.15);">
-    <span style="color: rgba(255, 255, 255, 0.7); font-weight: 500;">รายจ่ายรวมเดือนนี้</span>
-    <strong style="font-size: 1.8rem; color: #fb7185; text-shadow: 0 0 10px rgba(244, 63, 94, 0.3);">{{ month_total|baht }} บาท</strong>
-    <div class="small mt-1 fw-semibold" style="color: #fecdd3; opacity: 0.9;">ใช้ไปทั้งหมด</div>
+  <article class="stat-card stat-rose">
+    <span>รายจ่ายรวมเดือนนี้</span>
+    <strong style="color: #fb7185; text-shadow: 0 0 16px rgba(251,113,133,0.4);">{{ month_total|baht }} บาท</strong>
+    <div class="small mt-1" style="color: rgba(254,205,211,0.85); font-weight: 500;">ใช้ไปทั้งหมด</div>
   </article>
-  <article class="stat-card" style="background: linear-gradient(135deg, rgba(52, 211, 153, 0.12), rgba(52, 211, 153, 0.03)); border: 1px solid rgba(52, 211, 153, 0.25); box-shadow: 0 8px 32px 0 rgba(52, 211, 153, 0.15);">
-    <span style="color: rgba(255, 255, 255, 0.7); font-weight: 500;">เงินออมรวมเดือนนี้</span>
-    <strong style="font-size: 1.8rem; color: #34d399; text-shadow: 0 0 10px rgba(52, 211, 153, 0.3);">{{ total_savings|baht }} บาท</strong>
-    <div class="small mt-1 fw-semibold" style="color: #a7f3d0; opacity: 0.9;">รายรับ - รายจ่าย</div>
+  <article class="stat-card stat-emerald">
+    <span>เงินออมรวมเดือนนี้</span>
+    <strong style="color: #34d399; text-shadow: 0 0 16px rgba(52,211,153,0.4);">{{ total_savings|baht }} บาท</strong>
+    <div class="small mt-1" style="color: rgba(167,243,208,0.85); font-weight: 500;">รายรับ - รายจ่าย</div>
   </article>
 </section>
 
-<!-- เป้าหมายจ่ายบิล 650 บาท -->
+<!-- เป้าหมายจ่ายบิล -->
 <section class="panel budget-progress-panel animate-in stagger-3">
-  <div class="budget-progress-header mb-2 d-flex justify-content-between align-items-end">
+  <div class="budget-progress-header mb-2">
     <div>
-      <span class="budget-label fw-bold" style="font-size: 1.1rem; color: #334155;"><i class="bi bi-receipt"></i> เป้าหมายจ่ายบิล ({{ bills_goal|baht }} บาท)</span>
-      <div class="text-muted small mt-1">ค่าเน็ตและมือถือ</div>
+      <span class="budget-label"><i class="bi bi-receipt"></i> เป้าหมายจ่ายบิล ({{ bills_goal|baht }} บาท)</span>
+      <div style="font-size:0.82rem; color: var(--text-muted); margin-top:3px;">ค่าเน็ตและมือถือ</div>
     </div>
-    <span class="budget-percent fw-bold {% if bills_progress >= 100 %}text-success{% else %}text-primary{% endif %}" style="font-size: 1.2rem;">
+    <span class="budget-percent {% if bills_progress >= 100 %}" style="color:var(--success);text-shadow:0 0 20px rgba(52,211,153,0.45);{% else %}{% endif %}">
       {{ bills_progress }}%
     </span>
   </div>
-  <div class="budget-bar-track mt-3" style="height: 14px; background: #e2e8f0; border-radius: 7px; overflow: hidden; margin-bottom: 12px;">
-    <div class="budget-bar-fill {% if bills_progress >= 100 %}bg-success{% else %}bg-primary{% endif %}"
-         style="width: {{ bills_progress }}%; height: 100%; transition: width 0.8s ease-out; border-radius: 7px;"></div>
+  <div class="budget-bar-track mt-3" style="height: 10px; margin-bottom: 16px;">
+    <div class="budget-bar-fill {% if bills_progress >= 100 %}" style="width:{{ bills_progress }}%; background: linear-gradient(90deg,#059669,#34d399); box-shadow: 0 0 16px rgba(52,211,153,0.5);{% else %}{% endif %}"
+         style="width: {{ bills_progress }}%;"></div>
   </div>
-  
-  <div class="text-center mt-3 pt-2" style="border-top: 1px dashed #e2e8f0;">
+  <div class="text-center pt-3" style="border-top: 1px solid rgba(255,255,255,0.06);">
     {% if total_savings < bills_goal %}
-      <span class="text-danger fw-semibold" style="font-size: 0.95rem;">
-        <i class="bi bi-info-circle"></i> ขาดอีก <strong style="font-size: 1.1rem;">{{ (bills_goal - total_savings)|baht }}</strong> บาท สำหรับจ่ายบิลเดือนนี้
+      <span style="color:var(--danger); font-weight:600; font-size:0.92rem;">
+        <i class="bi bi-info-circle"></i> ขาดอีก <strong style="font-size:1.05rem;">{{ (bills_goal - total_savings)|baht }}</strong> บาท สำหรับจ่ายบิลเดือนนี้
       </span>
     {% else %}
-      <span class="text-success fw-bold" style="font-size: 1rem;">
+      <span style="color:var(--success); font-weight:700; font-size:0.95rem;">
         ✅ เก็บเงินจ่ายบิลค่าเน็ตและมือถือครบแล้ว!
       </span>
     {% endif %}
@@ -60,46 +59,40 @@
 
 <!-- เงินออมส่วนตัว & เป้าหมายของขวัญ -->
 {% if total_savings > bills_goal or current_user.wishlist_name %}
-<section class="panel animate-in stagger-3 mt-3" style="background: linear-gradient(135deg, #fef08a 0%, #fde047 100%); border: 2px solid #facc15; box-shadow: 0 4px 15px rgba(234, 179, 8, 0.25); border-radius: 1rem; position: relative; overflow: hidden;">
-  <div style="position: absolute; top: -10px; right: -10px; font-size: 4rem; opacity: 0.15; transform: rotate(15deg);">🎁</div>
-  <div class="py-3 px-3 position-relative" style="z-index: 1;">
-    <div class="d-flex justify-content-between align-items-center mb-2">
-      <h3 class="mb-0" style="color: #a16207; font-weight: 700; font-size: 1.1rem;">
+<section class="panel animate-in stagger-3 mt-3" style="background: linear-gradient(135deg, rgba(251,191,36,0.12), rgba(234,179,8,0.06)); border: 1px solid rgba(251,191,36,0.28); position: relative; overflow: hidden;">
+  <div style="position: absolute; top: -15px; right: -15px; font-size: 5rem; opacity: 0.08; transform: rotate(15deg); pointer-events:none;">🎁</div>
+  <div class="py-2 px-1 position-relative" style="z-index: 1;">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+      <h3 class="mb-0" style="color: var(--amber-400); font-weight: 800; font-size: 1rem; text-shadow: 0 0 16px rgba(251,191,36,0.3);">
         <i class="bi bi-gift-fill"></i> เป้าหมายของขวัญ
       </h3>
-      <button class="btn btn-sm btn-light" data-bs-toggle="modal" data-bs-target="#wishlistModal" style="border-radius: 20px; color: #854d0e; font-weight: bold; font-size: 0.8rem;">
+      <button class="btn btn-sm btn-light" data-bs-toggle="modal" data-bs-target="#wishlistModal">
         <i class="bi bi-pencil-square"></i> ตั้งเป้าหมาย
       </button>
     </div>
-    
     {% if current_user.wishlist_name and current_user.wishlist_price %}
       {% set w_progress = [(personal_savings / current_user.wishlist_price) * 100, 100]|min|round(1) if current_user.wishlist_price > 0 else 0 %}
-      <div class="text-center mt-3">
-        <h4 style="color: #713f12; font-weight: 800;">{{ current_user.wishlist_name }}</h4>
-        <div class="d-flex justify-content-between small fw-bold mt-2" style="color: #854d0e;">
+      <div class="text-center mt-2">
+        <h4 style="color: var(--text-primary); font-weight: 800; letter-spacing: -0.02em;">{{ current_user.wishlist_name }}</h4>
+        <div class="d-flex justify-content-between small fw-600 mt-2" style="color: var(--text-secondary);">
           <span>เก็บได้: {{ personal_savings|baht }}</span>
           <span>เป้าหมาย: {{ current_user.wishlist_price|baht }}</span>
         </div>
-        <div class="budget-bar-track mt-1" style="height: 12px; background: rgba(255,255,255,0.6); border-radius: 6px; overflow: hidden;">
-          <div class="budget-bar-fill {% if w_progress >= 100 %}bg-success{% else %}bg-warning{% endif %}"
-               style="width: {{ w_progress }}%; height: 100%; transition: width 0.8s ease-out;"></div>
+        <div class="budget-bar-track mt-2" style="height: 10px;">
+          <div class="budget-bar-fill {% if w_progress >= 100 %}" style="width:{{ w_progress }}%; background:linear-gradient(90deg,#059669,var(--success)); box-shadow:0 0 14px rgba(52,211,153,0.5);{% else %}" style="width:{{ w_progress }}%; background:linear-gradient(90deg,#b45309,var(--warning)); box-shadow:0 0 14px rgba(251,191,36,0.45);{% endif %}"></div>
         </div>
-        <div class="mt-2 small fw-bold" style="color: #854d0e;">
-          {% if w_progress >= 100 %}
-            🎉 ยินดีด้วย! ซื้อได้แล้ว!
-          {% else %}
-            สู้ๆ ขาดอีก {{ (current_user.wishlist_price - personal_savings)|baht }} บาท
+        <div class="mt-2 small" style="color:var(--text-muted); font-weight:600;">
+          {% if w_progress >= 100 %} 🎉 ยินดีด้วย! ซื้อได้แล้ว!
+          {% else %} สู้ๆ ขาดอีก {{ (current_user.wishlist_price - personal_savings)|baht }} บาท
           {% endif %}
         </div>
       </div>
     {% else %}
-      <div class="text-center mt-3">
-        <h2 class="mb-0" style="color: #713f12; font-weight: 900; font-size: 2.2rem; text-shadow: 1px 1px 0 rgba(255,255,255,0.5);">
-          {{ personal_savings|baht }} <span style="font-size: 1.2rem; font-weight: 700;">บาท</span>
+      <div class="text-center mt-2">
+        <h2 class="mb-0" style="color: var(--amber-400); font-weight: 900; font-size: 2.2rem; text-shadow: 0 0 24px rgba(251,191,36,0.35); letter-spacing: -0.04em;">
+          {{ personal_savings|baht }} <span style="font-size: 1.1rem; font-weight: 700;">บาท</span>
         </h2>
-        <p class="mb-0 mt-2 small" style="color: #854d0e; font-weight: 600; background: rgba(255,255,255,0.5); display: inline-block; padding: 4px 12px; border-radius: 20px;">
-          เงินออมส่วนตัวของคุณ ลองตั้งเป้าหมายของที่อยากได้สิ!
-        </p>
+        <p class="mb-0 mt-2 small" style="color: var(--text-muted); font-weight: 500;">เงินออมส่วนตัวของคุณ ลองตั้งเป้าหมายของที่อยากได้สิ!</p>
       </div>
     {% endif %}
   </div>

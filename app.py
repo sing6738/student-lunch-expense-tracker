@@ -76,10 +76,11 @@ def create_app():
 
     @app.after_request
     def set_security_headers(response):
-        # บังคับใช้ HTTPS เป็นเวลา 1 ปี + รวม subdomains
-        response.headers['Strict-Transport-Security'] = (
-            'max-age=31536000; includeSubDomains'
-        )
+        # บังคับใช้ HTTPS เป็นเวลา 1 ปี + รวม subdomains (เฉพาะใน production/ไม่ใช่ debug)
+        if not app.debug:
+            response.headers['Strict-Transport-Security'] = (
+                'max-age=31536000; includeSubDomains'
+            )
 
         # ป้องกัน XSS - อนุญาตเฉพาะ resources จาก self และ cdn.jsdelivr.net
         response.headers['Content-Security-Policy'] = (
