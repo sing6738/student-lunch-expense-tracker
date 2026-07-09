@@ -16,6 +16,7 @@ from flask import (
     url_for,
 )
 from flask_wtf import CSRFProtect
+from flask_wtf.csrf import CSRFError
 from sqlalchemy import extract, func
 
 from config import Config
@@ -118,6 +119,11 @@ def register_error_handlers(app):
     def internal_error(error):
         db.session.rollback()
         return render_template("errors/500.html"), 500
+
+    @app.errorhandler(CSRFError)
+    def handle_csrf_error(e):
+        flash("เซสชั่นหมดอายุ กรุณารีเฟรชหน้าแล้วลองใหม่อีกครั้ง", "danger")
+        return redirect(request.url)
 
 
 def seed_restaurants_and_menus():
@@ -431,10 +437,18 @@ def register_routes(app):
         days_attended_set = set(exp.expense_date for exp in month_expenses)
         days_attended = len(days_attended_set)
 
-        total_income = days_attended * 100
-        total_savings = total_income - float(month_total or 0)
+        # Monthly Budget ของเดือนนี้
+        mb = get_or_create_monthly_budget(user.id, today.year, today.month)
+        mb_setup_needed = mb.monthly_income == 0  # แจ้งเตือนหากยังไม่ได้ตั้งงบ
 
-        bills_goal = 650
+        if not mb_setup_needed:
+            total_income = mb.monthly_income
+            bills_goal = mb.total_fixed
+        else:
+            total_income = days_attended * 100
+            bills_goal = 650
+
+        total_savings = total_income - float(month_total or 0)
         bills_saved = min(total_savings, bills_goal) if total_savings > 0 else 0
         bills_progress = min(round((bills_saved / bills_goal) * 100, 1), 100) if bills_goal > 0 else 0
         personal_savings = total_savings - bills_goal if total_savings > bills_goal else 0
@@ -449,10 +463,6 @@ def register_routes(app):
 
         import calendar
         cal_month = calendar.monthcalendar(today.year, today.month)
-
-        # Monthly Budget ของเดือนนี้
-        mb = get_or_create_monthly_budget(user.id, today.year, today.month)
-        mb_setup_needed = mb.monthly_income == 0  # แจ้งเตือนหากยังไม่ได้ตั้งงบ
 
         # คำนวณ % เทียบกับงบรายเดือน
         mb_spend_pct = 0
