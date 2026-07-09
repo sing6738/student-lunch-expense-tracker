@@ -401,17 +401,20 @@ def register_routes(app):
             else:
                 wishlist_name = request.form.get("wishlist_name")
                 wishlist_price = request.form.get("wishlist_price")
-                if wishlist_name:
-                    try:
+                daily_budget = request.form.get("daily_budget")
+                try:
+                    if daily_budget and str(daily_budget).strip():
+                        user.daily_budget = float(daily_budget)
+                    else:
+                        user.daily_budget = 100.0
+                    
+                    if wishlist_name and str(wishlist_name).strip():
                         user.wishlist_name = wishlist_name.strip()
-                        if not wishlist_price or not str(wishlist_price).strip():
-                            user.wishlist_price = 0.0
-                        else:
-                            user.wishlist_price = float(wishlist_price)
-                        db.session.commit()
-                        flash("ตั้งเป้าหมายของขวัญเรียบร้อยแล้ว", "success")
-                    except ValueError:
-                        flash("ราคาไม่ถูกต้อง", "danger")
+                        user.wishlist_price = float(wishlist_price) if wishlist_price and str(wishlist_price).strip() else 0.0
+                    db.session.commit()
+                    flash("ตั้งเป้าหมายและงบรายวันเรียบร้อยแล้ว", "success")
+                except ValueError:
+                    flash("ราคาหรืองบไม่ถูกต้อง", "danger")
             return redirect(url_for("dashboard"))
 
         today = date.today()
@@ -451,7 +454,11 @@ def register_routes(app):
         total_savings = total_income - float(month_total or 0)
         bills_saved = min(total_savings, bills_goal) if total_savings > 0 else 0
         bills_progress = min(round((bills_saved / bills_goal) * 100, 1), 100) if bills_goal > 0 else 0
-        personal_savings = total_savings - bills_goal if total_savings > bills_goal else 0
+        
+        # เป้าหมายหักจากเงินออมรายวัน (Daily Savings)
+        user_daily_budget = user.daily_budget if user.daily_budget is not None else 100.0
+        daily_savings = (days_attended * user_daily_budget) - float(month_total or 0)
+        personal_savings = max(0, daily_savings)
 
         # หมวดหมู่
         category_totals = {}

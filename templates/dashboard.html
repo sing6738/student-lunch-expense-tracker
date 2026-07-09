@@ -135,7 +135,6 @@
 </section>
 
 <!-- เงินออมส่วนตัว & เป้าหมายของขวัญ -->
-{% if total_savings > bills_goal or current_user.wishlist_name %}
 <section class="panel animate-in stagger-3 mt-3" style="background: linear-gradient(135deg, rgba(251,191,36,0.12), rgba(234,179,8,0.06)); border: 1px solid rgba(251,191,36,0.28); position: relative; overflow: hidden;">
   <div style="position: absolute; top: -15px; right: -15px; font-size: 5rem; opacity: 0.08; transform: rotate(15deg); pointer-events:none;">🎁</div>
   <div class="py-2 px-1 position-relative" style="z-index: 1;">
@@ -175,44 +174,7 @@
   </div>
 </section>
 
-<!-- Wishlist Modal -->
-<div class="modal fade" id="wishlistModal" tabindex="-1">
-  <div class="modal-dialog modal-dialog-centered">
-    <div class="modal-content">
-      <form method="post" action="{{ url_for('dashboard') }}">
-        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-        <button type="submit" class="d-none" aria-hidden="true"></button>
-        
-        <div class="modal-header">
-          <h5 class="modal-title">ตั้งเป้าหมายของขวัญ</h5>
-          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-        </div>
-        <div class="modal-body">
-          <div class="mb-3">
-            <label class="form-label">ของที่อยากได้</label>
-            <input type="text" class="form-control" name="wishlist_name" value="{{ current_user.wishlist_name or '' }}" required placeholder="เช่น รองเท้าผ้าใบ">
-          </div>
-          <div class="mb-3">
-            <label class="form-label">ราคาเป้าหมาย (บาท)</label>
-            <input type="number" class="form-control" name="wishlist_price" value="{{ current_user.wishlist_price or '' }}" required step="0.01" min="1" placeholder="เช่น 1500">
-          </div>
-        </div>
-        <div class="modal-footer d-flex justify-content-between">
-          {% if current_user.wishlist_name %}
-            <button type="submit" name="clear_wishlist" value="1" class="btn btn-outline-danger">ยกเลิกเป้าหมาย</button>
-          {% else %}
-            <div></div>
-          {% endif %}
-          <div>
-            <button type="button" class="btn btn-light" data-bs-dismiss="modal">ปิด</button>
-            <button type="submit" name="save_wishlist" value="1" class="btn btn-primary">บันทึก</button>
-          </div>
-        </div>
-      </form>
-    </div>
-  </div>
-</div>
-{% endif %}
+
 
 <div class="row g-4 mt-1 animate-in stagger-4">
   <div class="col-lg-12">
@@ -346,6 +308,53 @@
 </style>
 
 {% endblock %}
+
+{% block modals %}
+<!-- Wishlist Modal -->
+<div class="modal fade" id="wishlistModal" tabindex="-1">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <form method="post" action="{{ url_for('dashboard') }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <button type="submit" class="d-none" aria-hidden="true"></button>
+        
+        <div class="modal-header">
+          <h5 class="modal-title"><i class="bi bi-gear-fill"></i> ตั้งค่าเป้าหมาย & เงินออม</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <div class="mb-4">
+            <label class="form-label fw-bold text-primary"><i class="bi bi-wallet2"></i> งบใช้จ่ายต่อวัน (บาท)</label>
+            <input type="number" class="form-control" name="daily_budget" value="{{ current_user.daily_budget or 100 }}" required step="1" min="1">
+            <div class="form-text">ระบบจะนำเงินส่วนที่เหลือในแต่ละวันมาทบเป็นเงินออมส่วนตัวให้คุณอัตโนมัติ</div>
+          </div>
+          <hr class="border-secondary opacity-25">
+          <div class="mb-3">
+            <label class="form-label fw-bold text-warning"><i class="bi bi-gift-fill"></i> เป้าหมายของขวัญที่อยากได้</label>
+            <input type="text" class="form-control" name="wishlist_name" value="{{ current_user.wishlist_name or '' }}" placeholder="เช่น รองเท้าผ้าใบ">
+          </div>
+          <div class="mb-3">
+            <label class="form-label fw-bold text-warning">ราคาเป้าหมาย (บาท)</label>
+            <input type="number" class="form-control" name="wishlist_price" value="{{ current_user.wishlist_price or '' }}" step="0.01" min="1" placeholder="เช่น 1500">
+          </div>
+        </div>
+        <div class="modal-footer d-flex justify-content-between">
+          {% if current_user.wishlist_name %}
+            <button type="submit" name="clear_wishlist" value="1" class="btn btn-outline-danger btn-sm">ยกเลิกของขวัญ</button>
+          {% else %}
+            <div></div>
+          {% endif %}
+          <div>
+            <button type="button" class="btn btn-light" data-bs-dismiss="modal">ปิด</button>
+            <button type="submit" name="save_settings" value="1" class="btn btn-primary">บันทึกการตั้งค่า</button>
+          </div>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
 {% block scripts %}
 <script>
   window.dashboardChartData = {{ chart_data|tojson }};
