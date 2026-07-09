@@ -11,6 +11,24 @@
   </div>
 </div>
 
+<!-- แจ้งเตือนตั้งงบประมาณรายเดือน -->
+{% if mb_setup_needed %}
+<div class="mb-setup-alert animate-in stagger-1">
+  <div class="mb-setup-inner">
+    <div>
+      <i class="bi bi-calendar2-exclamation fs-4" style="color:var(--amber-400);"></i>
+      <div>
+        <strong style="color:var(--text-primary);">ยังไม่ได้ตั้งงบประมาณเดือนนี้!</strong>
+        <p class="mb-0 small text-muted">ตั้งงบรายเดือนและค่าใช้จ่ายคงที่เพื่อติดตามการใช้เงินได้แม่นยำขึ้น</p>
+      </div>
+    </div>
+    <a href="{{ url_for('monthly_budget') }}" class="btn btn-sm" style="background:var(--amber-400);color:#000;font-weight:700;white-space:nowrap;">
+      <i class="bi bi-arrow-right"></i> ตั้งงบเลย
+    </a>
+  </div>
+</div>
+{% endif %}
+
 <section class="stats-grid animate-in stagger-2 mb-3">
   <article class="stat-card stat-blue">
     <span>จำนวนวันที่ไปเรียนเดือนนี้</span>
@@ -28,6 +46,65 @@
     <div class="small mt-1" style="color: rgba(167,243,208,0.85); font-weight: 500;">รายรับ - รายจ่าย</div>
   </article>
 </section>
+
+<!-- Monthly Budget Widget -->
+{% if monthly_budget and monthly_budget.monthly_income > 0 %}
+<section class="panel mb-budget-widget animate-in stagger-2 mb-3">
+  <div class="d-flex justify-content-between align-items-start mb-3">
+    <div>
+      <h3 class="mb-0" style="color:var(--purple-300);font-weight:800;font-size:0.92rem;text-transform:uppercase;letter-spacing:0.07em;">
+        <i class="bi bi-calendar2-check"></i> งบประมาณเดือนนี้
+      </h3>
+      <div class="small text-muted mt-1">รายรับ {{ monthly_budget.monthly_income|baht }} ฿ · ค่าคงที่ {{ monthly_budget.total_fixed|baht }} ฿</div>
+    </div>
+    <a href="{{ url_for('monthly_budget') }}" class="btn btn-sm btn-light"><i class="bi bi-pencil-square"></i> แก้ไข</a>
+  </div>
+
+  <div class="row g-3 mb-3">
+    <div class="col-6 col-md-3">
+      <div class="mb-mini-stat">
+        <div class="mb-mini-label">งบอาหาร/ตัวแปร</div>
+        <div class="mb-mini-value" style="color:#34d399;">{{ monthly_budget.remaining_for_variable|baht }} ฿</div>
+      </div>
+    </div>
+    <div class="col-6 col-md-3">
+      <div class="mb-mini-stat">
+        <div class="mb-mini-label">ใช้จริงแล้ว</div>
+        <div class="mb-mini-value" style="color:{% if month_total > monthly_budget.remaining_for_variable %}#fb7185{% else %}#fbbf24{% endif %};">
+          {{ month_total|baht }} ฿
+        </div>
+      </div>
+    </div>
+    <div class="col-6 col-md-3">
+      <div class="mb-mini-stat">
+        <div class="mb-mini-label">เหลืองบ</div>
+        {% set remain_budget = monthly_budget.remaining_for_variable - month_total|float %}
+        <div class="mb-mini-value" style="color:{% if remain_budget < 0 %}#fb7185{% else %}#34d399{% endif %};">
+          {{ remain_budget|abs|baht }} ฿
+        </div>
+      </div>
+    </div>
+    <div class="col-6 col-md-3">
+      <div class="mb-mini-stat">
+        <div class="mb-mini-label">% ที่ใช้แล้ว</div>
+        <div class="mb-mini-value" style="color:{% if mb_spend_pct >= 100 %}#fb7185{% elif mb_spend_pct >= 80 %}#fbbf24{% else %}#c4b5fd{% endif %};">
+          {{ mb_spend_pct }}%
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="budget-bar-track" style="height:10px;">
+    <div class="budget-bar-fill {% if mb_spend_pct >= 100 %}over{% elif mb_spend_pct >= 80 %}warn{% endif %}"
+         style="width: {{ [mb_spend_pct, 100]|min }}%;"></div>
+  </div>
+  {% if mb_spend_pct >= 100 %}
+    <div class="small mt-2 fw-bold" style="color:var(--danger);">⚠️ เกินงบประมาณอาหาร!</div>
+  {% elif mb_spend_pct >= 80 %}
+    <div class="small mt-2 fw-bold" style="color:var(--warning);">⚡ ใกล้เต็มงบ ระวังด้วยนะ!</div>
+  {% endif %}
+</section>
+{% endif %}
 
 <!-- เป้าหมายจ่ายบิล -->
 <section class="panel budget-progress-panel animate-in stagger-3">
@@ -104,7 +181,6 @@
     <div class="modal-content">
       <form method="post" action="{{ url_for('dashboard') }}">
         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-        <!-- Hidden submit button to catch Enter key presses -->
         <button type="submit" class="d-none" aria-hidden="true"></button>
         
         <div class="modal-header">
@@ -221,6 +297,54 @@
     </section>
   </div>
 </div>
+
+<style>
+/* Monthly Budget Alert Banner */
+.mb-setup-alert {
+  margin-bottom: 16px;
+}
+.mb-setup-inner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 14px 20px;
+  background: linear-gradient(135deg, rgba(251,191,36,0.12), rgba(234,179,8,0.06));
+  border: 1px solid rgba(251,191,36,0.35);
+  border-radius: var(--radius-md);
+  backdrop-filter: blur(20px);
+}
+.mb-setup-inner > div {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+/* Monthly Budget Widget */
+.mb-budget-widget {
+  background: linear-gradient(135deg, rgba(139,92,246,0.09), rgba(109,40,217,0.05));
+  border-color: rgba(139,92,246,0.22);
+}
+.mb-mini-stat {
+  padding: 10px 14px;
+  background: rgba(255,255,255,0.03);
+  border-radius: var(--radius-sm);
+  border: 1px solid rgba(255,255,255,0.07);
+}
+.mb-mini-label {
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: var(--text-muted);
+  font-weight: 600;
+  margin-bottom: 4px;
+}
+.mb-mini-value {
+  font-size: 1rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+}
+</style>
+
 {% endblock %}
 {% block scripts %}
 <script>

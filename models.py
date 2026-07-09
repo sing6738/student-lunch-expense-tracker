@@ -82,3 +82,55 @@ class OnlineOrder(db.Model):
     user = db.relationship("User", backref=db.backref("online_orders", cascade="all, delete-orphan"))
     expense = db.relationship("Expense", backref=db.backref("online_order", uselist=False))
 
+
+# =========================================================
+# MonthlyBudget — งบประมาณรายเดือน + ค่าใช้จ่ายคงที่
+# =========================================================
+class MonthlyBudget(db.Model):
+    """
+    บันทึกงบประมาณรายเดือนและค่าใช้จ่ายคงที่ของแต่ละเดือน
+    """
+    __tablename__ = "monthly_budget"
+
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey("user.id"), nullable=False, index=True)
+    year = db.Column(db.Integer, nullable=False)
+    month = db.Column(db.Integer, nullable=False)  # 1–12
+
+    # งบรายเดือนที่ได้รับ (รายรับ)
+    monthly_income = db.Column(db.Float, nullable=False, default=0.0)
+
+    # ค่าใช้จ่ายคงที่รายเดือน
+    fixed_internet = db.Column(db.Float, nullable=False, default=0.0, comment="ค่าอินเทอร์เน็ต")
+    fixed_phone = db.Column(db.Float, nullable=False, default=0.0, comment="ค่าโทรศัพท์")
+    fixed_water = db.Column(db.Float, nullable=False, default=0.0, comment="ค่าน้ำ")
+    fixed_electric = db.Column(db.Float, nullable=False, default=0.0, comment="ค่าไฟ")
+    fixed_rent = db.Column(db.Float, nullable=False, default=0.0, comment="ค่าเช่า")
+    fixed_other = db.Column(db.Float, nullable=False, default=0.0, comment="ค่าใช้จ่ายคงที่อื่นๆ")
+    fixed_other_note = db.Column(db.String(200), nullable=True, comment="หมายเหตุค่าใช้จ่ายอื่นๆ")
+
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
+
+    user = db.relationship("User", backref=db.backref("monthly_budgets", cascade="all, delete-orphan"))
+
+    __table_args__ = (
+        db.UniqueConstraint("user_id", "year", "month", name="uq_user_year_month"),
+    )
+
+    @property
+    def total_fixed(self):
+        """รวมค่าใช้จ่ายคงที่ทั้งหมด"""
+        return (
+            self.fixed_internet
+            + self.fixed_phone
+            + self.fixed_water
+            + self.fixed_electric
+            + self.fixed_rent
+            + self.fixed_other
+        )
+
+    @property
+    def remaining_for_variable(self):
+        """เงินที่เหลือหลังหักค่าใช้จ่ายคงที่ (ใช้ซื้ออาหาร ฯลฯ)"""
+        return max(self.monthly_income - self.total_fixed, 0)

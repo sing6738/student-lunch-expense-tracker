@@ -1,7 +1,7 @@
 from datetime import date
 
 from flask_wtf import FlaskForm
-from wtforms import DateField, FloatField, PasswordField, SelectField, StringField, SubmitField
+from wtforms import DateField, FloatField, PasswordField, SelectField, StringField, SubmitField, TextAreaField
 from wtforms.validators import DataRequired, Email, EqualTo, Length, NumberRange, Optional
 
 
@@ -98,3 +98,45 @@ class OnlineOrderForm(FlaskForm):
     submit = SubmitField("บันทึกรายการสั่งซื้อ")
 
 
+class MonthlyBudgetForm(FlaskForm):
+    """ฟอร์มตั้งงบประมาณรายเดือน + ค่าใช้จ่ายคงที่"""
+    monthly_income = FloatField(
+        "รายรับ / งบรายเดือนทั้งหมด (บาท)",
+        validators=[DataRequired(message="กรุณากรอกรายรับ"), NumberRange(min=0)],
+        default=0.0,
+    )
+    fixed_internet = FloatField(
+        "ค่าอินเทอร์เน็ต",
+        validators=[Optional(), NumberRange(min=0)],
+        default=0.0,
+    )
+    fixed_phone = FloatField(
+        "ค่าโทรศัพท์",
+        validators=[Optional(), NumberRange(min=0)],
+        default=0.0,
+    )
+    fixed_water = FloatField(
+        "ค่าน้ำ",
+        validators=[Optional(), NumberRange(min=0)],
+        default=0.0,
+    )
+    fixed_electric = FloatField(
+        "ค่าไฟ",
+        validators=[Optional(), NumberRange(min=0)],
+        default=0.0,
+    )
+    fixed_rent = FloatField(
+        "ค่าเช่า / ค่าหอพัก",
+        validators=[Optional(), NumberRange(min=0)],
+        default=0.0,
+    )
+    fixed_other = FloatField(
+        "ค่าใช้จ่ายคงที่อื่นๆ",
+        validators=[Optional(), NumberRange(min=0)],
+        default=0.0,
+    )
+    fixed_other_note = StringField(
+        "หมายเหตุ (อื่นๆ)",
+        validators=[Optional(), Length(max=200)],
+    )
+    submit = SubmitField("บันทึกงบประมาณ")

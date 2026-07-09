@@ -1,0 +1,339 @@
+{% extends "base.html" %}
+{% block title %}งบประมาณรายเดือน — {{ month_name }} {{ year }}{% endblock %}
+{% block content %}
+
+<div class="animate-in stagger-1">
+  <div class="page-heading">
+    <div>
+      <h1><i class="bi bi-calendar2-check" style="color:var(--purple-400)"></i> งบประมาณรายเดือน</h1>
+      <p>ตั้งงบ ติดตามค่าใช้จ่ายคงที่ และเงินออมของคุณ</p>
+    </div>
+    <a href="{{ url_for('monthly_budget_summary') }}" class="btn btn-outline-primary">
+      <i class="bi bi-list-ul"></i> ดูสรุปทุกเดือน
+    </a>
+  </div>
+</div>
+
+<!-- Month Navigator -->
+<div class="month-nav animate-in stagger-2">
+  <a href="{{ url_for('monthly_budget', year=prev_year, month=prev_month) }}" class="btn btn-light btn-sm month-nav-btn">
+    <i class="bi bi-chevron-left"></i>
+  </a>
+  <div class="month-nav-title">
+    <span class="month-name">{{ month_name }}</span>
+    <span class="month-year">{{ year }}</span>
+  </div>
+  {% if not (year == today.year and month == today.month) %}
+  <a href="{{ url_for('monthly_budget', year=next_year, month=next_month) }}" class="btn btn-light btn-sm month-nav-btn">
+    <i class="bi bi-chevron-right"></i>
+  </a>
+  {% else %}
+  <span class="btn btn-light btn-sm month-nav-btn disabled" style="opacity:0.3;"><i class="bi bi-chevron-right"></i></span>
+  {% endif %}
+  {% if not (year == today.year and month == today.month) %}
+  <a href="{{ url_for('monthly_budget') }}" class="btn btn-sm btn-outline-primary ms-2">
+    <i class="bi bi-calendar-check"></i> เดือนนี้
+  </a>
+  {% endif %}
+</div>
+
+<!-- Summary Cards (ยอดจริง) -->
+{% if mb.monthly_income > 0 %}
+<section class="stats-grid animate-in stagger-2 mt-3">
+  <article class="stat-card stat-blue">
+    <span>รายรับเดือนนี้</span>
+    <strong style="color:#38bdf8;">{{ mb.monthly_income|baht }} ฿</strong>
+    <div class="small mt-1" style="color:rgba(186,230,253,0.85);">งบที่ตั้งไว้</div>
+  </article>
+  <article class="stat-card stat-rose">
+    <span>ค่าใช้จ่ายคงที่</span>
+    <strong style="color:#fb7185;">{{ mb.total_fixed|baht }} ฿</strong>
+    <div class="small mt-1" style="color:rgba(254,205,211,0.85);">บิล, เน็ต, ค่าเช่า ฯลฯ</div>
+  </article>
+  <article class="stat-card stat-emerald">
+    <span>งบค่าอาหาร (เหลือ)</span>
+    <strong style="color:#34d399;">{{ mb.remaining_for_variable|baht }} ฿</strong>
+    <div class="small mt-1" style="color:rgba(167,243,208,0.85);">หลังหักค่าคงที่</div>
+  </article>
+  <article class="stat-card stat-amber">
+    <span>ใช้จ่ายจริง (เดือนนี้)</span>
+    {% set net = mb.monthly_income - mb.total_fixed - actual_spend %}
+    <strong style="color:{% if actual_spend > mb.remaining_for_variable %}#fb7185{% else %}#fbbf24{% endif %};">
+      {{ actual_spend|baht }} ฿
+    </strong>
+    <div class="small mt-1" style="color:rgba(253,230,138,0.85);">
+      {% if net >= 0 %}เหลือ {{ net|baht }} ฿{% else %}เกินงบ {{ (net * -1)|baht }} ฿{% endif %}
+    </div>
+  </article>
+</section>
+
+<!-- Spending Progress Bar -->
+<section class="panel animate-in stagger-3 mt-2">
+  {% set spend_pct = [((actual_spend / mb.remaining_for_variable) * 100), 100]|min|round(1) if mb.remaining_for_variable > 0 else 0 %}
+  <div class="budget-progress-header mb-2">
+    <div>
+      <span class="budget-label"><i class="bi bi-pie-chart-fill"></i> ค่าอาหาร/ค่าใช้จ่ายตัวแปร</span>
+      <div style="font-size:0.82rem;color:var(--text-muted);margin-top:2px;">
+        ใช้ {{ actual_spend|baht }} จาก {{ mb.remaining_for_variable|baht }} บาท
+      </div>
+    </div>
+    <span class="budget-percent {% if spend_pct >= 100 %}over{% elif spend_pct >= 80 %}warn{% endif %}">
+      {{ spend_pct }}%
+    </span>
+  </div>
+  <div class="budget-bar-track" style="height:12px;">
+    <div class="budget-bar-fill {% if spend_pct >= 100 %}over{% elif spend_pct >= 80 %}warn{% endif %}"
+         style="width: {{ spend_pct }}%;"></div>
+  </div>
+  {% if category_totals %}
+  <div class="mt-3">
+    {% set total_cat = actual_spend %}
+    {% for cat, amt in category_totals.items() %}
+      {% set pct = (amt / total_cat * 100) if total_cat > 0 else 0 %}
+      <div class="d-flex justify-content-between small fw-500 mb-1">
+        <span style="color:var(--text-secondary);">{{ cat }}</span>
+        <span style="color:var(--text-primary);">{{ amt|baht }} ฿ ({{ pct|round(1) }}%)</span>
+      </div>
+    {% endfor %}
+  </div>
+  {% endif %}
+</section>
+{% endif %}
+
+<div class="row g-4 mt-1 animate-in stagger-3">
+  <!-- ฟอร์มตั้งงบ -->
+  <div class="col-lg-7">
+    <section class="panel h-100">
+      <div class="panel-title mb-3">
+        <h2><i class="bi bi-sliders2"></i> ตั้งงบประมาณเดือน {{ month_name }} {{ year }}</h2>
+      </div>
+      <form method="post">
+        {{ form.hidden_tag() }}
+
+        <!-- รายรับ -->
+        <div class="mb-4">
+          <label class="form-label fw-bold" style="color:var(--purple-300);">
+            <i class="bi bi-wallet2"></i> รายรับ / งบรายเดือนทั้งหมด
+          </label>
+          {{ form.monthly_income(class="form-control form-control-lg", placeholder="เช่น 3000", id="monthly_income") }}
+          <div class="form-text text-muted mt-1">กรอกจำนวนเงินที่ได้รับหรือวางแผนใช้ทั้งเดือน</div>
+          {% for e in form.monthly_income.errors %}<div class="invalid-hint">{{ e }}</div>{% endfor %}
+        </div>
+
+        <div class="divider"></div>
+
+        <!-- ค่าคงที่ -->
+        <div class="mb-3">
+          <p class="fw-bold mb-3" style="color:var(--text-secondary);font-size:0.85rem;text-transform:uppercase;letter-spacing:0.07em;">
+            <i class="bi bi-receipt"></i> ค่าใช้จ่ายคงที่รายเดือน
+          </p>
+          <div class="row g-3">
+            <div class="col-sm-6">
+              <label class="form-label">{{ form.fixed_internet.label.text }}</label>
+              <div class="input-group">
+                <span class="input-group-text"><i class="bi bi-wifi"></i></span>
+                {{ form.fixed_internet(class="form-control", placeholder="0") }}
+                <span class="input-group-text">฿</span>
+              </div>
+            </div>
+            <div class="col-sm-6">
+              <label class="form-label">{{ form.fixed_phone.label.text }}</label>
+              <div class="input-group">
+                <span class="input-group-text"><i class="bi bi-phone"></i></span>
+                {{ form.fixed_phone(class="form-control", placeholder="0") }}
+                <span class="input-group-text">฿</span>
+              </div>
+            </div>
+            <div class="col-sm-6">
+              <label class="form-label">{{ form.fixed_water.label.text }}</label>
+              <div class="input-group">
+                <span class="input-group-text"><i class="bi bi-droplet-fill"></i></span>
+                {{ form.fixed_water(class="form-control", placeholder="0") }}
+                <span class="input-group-text">฿</span>
+              </div>
+            </div>
+            <div class="col-sm-6">
+              <label class="form-label">{{ form.fixed_electric.label.text }}</label>
+              <div class="input-group">
+                <span class="input-group-text"><i class="bi bi-lightning-charge-fill"></i></span>
+                {{ form.fixed_electric(class="form-control", placeholder="0") }}
+                <span class="input-group-text">฿</span>
+              </div>
+            </div>
+            <div class="col-sm-6">
+              <label class="form-label">{{ form.fixed_rent.label.text }}</label>
+              <div class="input-group">
+                <span class="input-group-text"><i class="bi bi-house-fill"></i></span>
+                {{ form.fixed_rent(class="form-control", placeholder="0") }}
+                <span class="input-group-text">฿</span>
+              </div>
+            </div>
+            <div class="col-sm-6">
+              <label class="form-label">{{ form.fixed_other.label.text }}</label>
+              <div class="input-group">
+                <span class="input-group-text"><i class="bi bi-three-dots"></i></span>
+                {{ form.fixed_other(class="form-control", placeholder="0") }}
+                <span class="input-group-text">฿</span>
+              </div>
+            </div>
+            <div class="col-12">
+              <label class="form-label">{{ form.fixed_other_note.label.text }}</label>
+              {{ form.fixed_other_note(class="form-control", placeholder="เช่น ค่าผ่อนรถ, ค่าประกัน...") }}
+            </div>
+          </div>
+        </div>
+
+        <div class="d-flex gap-2 justify-content-end mt-4">
+          {{ form.submit(class="btn btn-primary px-5") }}
+        </div>
+      </form>
+    </section>
+  </div>
+
+  <!-- สรุปค่าคงที่ -->
+  <div class="col-lg-5">
+    <section class="panel h-100" id="fixedSummaryPanel">
+      <div class="panel-title mb-3">
+        <h2><i class="bi bi-calculator"></i> สรุปค่าใช้จ่ายคงที่</h2>
+      </div>
+
+      <div class="fixed-summary-list">
+        <div class="fixed-row" data-field="internet">
+          <span><i class="bi bi-wifi" style="color:#38bdf8;"></i> ค่าอินเทอร์เน็ต</span>
+          <strong class="fixed-val" id="sum_internet">{{ mb.fixed_internet|baht }} ฿</strong>
+        </div>
+        <div class="fixed-row" data-field="phone">
+          <span><i class="bi bi-phone" style="color:#34d399;"></i> ค่าโทรศัพท์</span>
+          <strong class="fixed-val" id="sum_phone">{{ mb.fixed_phone|baht }} ฿</strong>
+        </div>
+        <div class="fixed-row" data-field="water">
+          <span><i class="bi bi-droplet-fill" style="color:#60a5fa;"></i> ค่าน้ำ</span>
+          <strong class="fixed-val" id="sum_water">{{ mb.fixed_water|baht }} ฿</strong>
+        </div>
+        <div class="fixed-row" data-field="electric">
+          <span><i class="bi bi-lightning-charge-fill" style="color:#fbbf24;"></i> ค่าไฟ</span>
+          <strong class="fixed-val" id="sum_electric">{{ mb.fixed_electric|baht }} ฿</strong>
+        </div>
+        <div class="fixed-row" data-field="rent">
+          <span><i class="bi bi-house-fill" style="color:#c4b5fd;"></i> ค่าเช่า</span>
+          <strong class="fixed-val" id="sum_rent">{{ mb.fixed_rent|baht }} ฿</strong>
+        </div>
+        <div class="fixed-row" data-field="other">
+          <span><i class="bi bi-three-dots" style="color:#fb7185;"></i> อื่นๆ</span>
+          <strong class="fixed-val" id="sum_other">{{ mb.fixed_other|baht }} ฿</strong>
+        </div>
+      </div>
+
+      <div class="divider"></div>
+
+      <div class="d-flex justify-content-between align-items-center mt-2">
+        <span style="color:var(--text-secondary);font-size:0.85rem;">รวมค่าคงที่ทั้งหมด</span>
+        <strong id="sum_total" style="font-size:1.2rem;color:var(--rose-400);">{{ mb.total_fixed|baht }} ฿</strong>
+      </div>
+      <div class="d-flex justify-content-between align-items-center mt-1">
+        <span style="color:var(--text-secondary);font-size:0.85rem;">รายรับ - ค่าคงที่</span>
+        <strong id="sum_remain" style="font-size:1.1rem;color:var(--emerald-400);">{{ mb.remaining_for_variable|baht }} ฿</strong>
+      </div>
+
+      {% if mb.monthly_income > 0 %}
+      <div class="mt-4 p-3 rounded-3" style="background:rgba(139,92,246,0.07);border:1px solid rgba(139,92,246,0.18);">
+        <p class="mb-2 small fw-bold" style="color:var(--purple-300);"><i class="bi bi-lightbulb-fill"></i> แนะนำ: งบค่าอาหารต่อวัน</p>
+        {% set days_in_month = 30 %}
+        {% set daily_food = mb.remaining_for_variable / days_in_month %}
+        <div class="text-center">
+          <span style="font-size:2rem;font-weight:800;color:var(--text-primary);">{{ daily_food|baht }}</span>
+          <span style="color:var(--text-muted);"> ฿/วัน</span>
+        </div>
+        <p class="text-center mb-0 mt-1" style="font-size:0.78rem;color:var(--text-muted);">
+          คำนวณจาก {{ mb.remaining_for_variable|baht }} ฿ ÷ {{ days_in_month }} วัน
+        </p>
+      </div>
+      {% endif %}
+    </section>
+  </div>
+</div>
+
+<script>
+// Live preview สรุปเมื่อกรอกฟอร์ม
+(function() {
+  const fields = ['internet', 'phone', 'water', 'electric', 'rent', 'other'];
+  const incomeEl = document.getElementById('monthly_income');
+
+  function fmt(n) {
+    return parseFloat(n || 0).toLocaleString('th-TH', {minimumFractionDigits:2,maximumFractionDigits:2});
+  }
+
+  function updateSummary() {
+    let total = 0;
+    fields.forEach(f => {
+      const el = document.getElementById('fixed_' + f);
+      const val = parseFloat(el?.value || 0) || 0;
+      const sumEl = document.getElementById('sum_' + f);
+      if (sumEl) sumEl.textContent = fmt(val) + ' ฿';
+      total += val;
+    });
+    const income = parseFloat(incomeEl?.value || 0) || 0;
+    const remain = Math.max(income - total, 0);
+
+    const totalEl = document.getElementById('sum_total');
+    const remainEl = document.getElementById('sum_remain');
+    if (totalEl) totalEl.textContent = fmt(total) + ' ฿';
+    if (remainEl) remainEl.textContent = fmt(remain) + ' ฿';
+  }
+
+  // Attach listeners
+  fields.forEach(f => {
+    const el = document.getElementById('fixed_' + f);
+    if (el) el.addEventListener('input', updateSummary);
+  });
+  if (incomeEl) incomeEl.addEventListener('input', updateSummary);
+})();
+</script>
+
+<style>
+.month-nav {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+.month-nav-title {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-width: 130px;
+}
+.month-name {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  letter-spacing: -0.02em;
+}
+.month-year {
+  font-size: 0.78rem;
+  color: var(--text-muted);
+}
+.month-nav-btn {
+  width: 36px; height: 36px;
+  display: flex; align-items: center; justify-content: center;
+  padding: 0;
+}
+.fixed-summary-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.fixed-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 12px;
+  border-radius: var(--radius-sm);
+  background: rgba(255,255,255,0.03);
+  border: 1px solid rgba(255,255,255,0.06);
+  font-size: 0.88rem;
+}
+.fixed-row span { color: var(--text-secondary); display: flex; align-items: center; gap: 7px; }
+.fixed-val { color: var(--text-primary); font-weight: 600; }
+</style>
+{% endblock %}

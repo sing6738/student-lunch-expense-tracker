@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>{% block title %}Lunch Expense{% endblock %}</title>
+  <title>{% block title %}Lunch Budget{% endblock %}</title>
   
   <link rel="preconnect" href="https://cdn.jsdelivr.net">
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -25,6 +25,10 @@
     <div class="blob"></div>
     <div class="blob"></div>
   </div>
+
+  <!-- Toast Container -->
+  <div class="toast-container" id="toastContainer" aria-live="polite" aria-atomic="true"></div>
+
   {% if current_user %}
   <div class="app-shell">
     <main class="main-panel">
@@ -46,14 +50,14 @@
       </nav>
 
       <div class="content-wrap">
+        {# Flash messages → converted to toasts via JS below #}
         {% with messages = get_flashed_messages(with_categories=true) %}
           {% if messages %}
-            {% for category, message in messages %}
-              <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
-                {{ message }}
-                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-              </div>
-            {% endfor %}
+            <div id="flashData" style="display:none">
+              {% for category, message in messages %}
+                <span data-cat="{{ category }}" data-msg="{{ message }}"></span>
+              {% endfor %}
+            </div>
           {% endif %}
         {% endwith %}
         {% block content %}{% endblock %}
@@ -83,14 +87,15 @@
         <a class="nav-link {% if request.endpoint in ['online_orders', 'add_online_order', 'edit_online_order'] %}active{% endif %}" href="{{ url_for('online_orders') }}">
           <i class="bi bi-cart"></i> สั่งของออนไลน์
         </a>
-        <a class="nav-link {% if request.endpoint == 'manage_menus' %}active{% endif %}" href="{{ url_for('manage_menus') }}">
-          <i class="bi bi-shop"></i> จัดการร้านและเมนู
+        <div class="nav-divider my-1" style="height:1px;background:rgba(255,255,255,0.07);border-radius:99px;"></div>
+        <a class="nav-link {% if request.endpoint in ['monthly_budget', 'monthly_budget_summary'] %}active{% endif %}" href="{{ url_for('monthly_budget') }}">
+          <i class="bi bi-calendar2-check"></i> งบประมาณรายเดือน
         </a>
         <a class="nav-link {% if request.endpoint == 'analytics' %}active{% endif %}" href="{{ url_for('analytics') }}">
           <i class="bi bi-bar-chart"></i> Analytics
         </a>
-        <a class="nav-link {% if request.endpoint == 'budget' %}active{% endif %}" href="{{ url_for('budget') }}">
-          <i class="bi bi-piggy-bank"></i> งบประมาณ
+        <a class="nav-link {% if request.endpoint == 'manage_menus' %}active{% endif %}" href="{{ url_for('manage_menus') }}">
+          <i class="bi bi-shop"></i> จัดการร้านและเมนู
         </a>
         <a class="nav-link {% if request.endpoint == 'profile' %}active{% endif %}" href="{{ url_for('profile') }}">
           <i class="bi bi-person"></i> โปรไฟล์ของคุณ
@@ -123,69 +128,131 @@
 
   <!-- Mobile Bottom Navigation -->
   {% if current_user %}
-  <nav class="mobile-bottom-nav d-md-none fixed-bottom bg-white border-top shadow-sm" style="z-index: 1040;">
-    <div class="container d-flex justify-content-around py-2">
-      <a href="{{ url_for('dashboard') }}" class="text-center text-decoration-none {% if request.endpoint == 'dashboard' %}text-primary fw-bold{% else %}text-muted{% endif %}" style="font-size: 0.8rem;">
-        <i class="bi bi-grid-1x2 fs-4 d-block mb-1"></i>
-        Dashboard
+  <nav class="mobile-bottom-nav d-md-none fixed-bottom" style="z-index: 1040;">
+    <div class="mobile-nav-inner d-flex justify-content-around">
+      <a href="{{ url_for('dashboard') }}" class="mobile-nav-item {% if request.endpoint == 'dashboard' %}active{% endif %}">
+        <i class="bi bi-grid-1x2"></i>
+        <span>หน้าหลัก</span>
       </a>
-      <a href="{{ url_for('add_expense') }}" class="text-center text-decoration-none {% if request.endpoint == 'add_expense' %}text-primary fw-bold{% else %}text-muted{% endif %}" style="font-size: 0.8rem;">
-        <i class="bi bi-plus-circle fs-4 d-block mb-1"></i>
-        เพิ่มรายการ
+      <a href="{{ url_for('add_expense') }}" class="mobile-nav-item {% if request.endpoint == 'add_expense' %}active{% endif %}">
+        <i class="bi bi-plus-circle-fill fs-4"></i>
+        <span>เพิ่ม</span>
       </a>
-      <a href="{{ url_for('history') }}" class="text-center text-decoration-none {% if request.endpoint == 'history' %}text-primary fw-bold{% else %}text-muted{% endif %}" style="font-size: 0.8rem;">
-        <i class="bi bi-clock-history fs-4 d-block mb-1"></i>
-        ประวัติ
+      <a href="{{ url_for('monthly_budget') }}" class="mobile-nav-item {% if request.endpoint in ['monthly_budget','monthly_budget_summary'] %}active{% endif %}">
+        <i class="bi bi-calendar2-check"></i>
+        <span>งบเดือน</span>
       </a>
-      <a href="{{ url_for('profile') }}" class="text-center text-decoration-none {% if request.endpoint == 'profile' %}text-primary fw-bold{% else %}text-muted{% endif %}" style="font-size: 0.8rem;">
-        <i class="bi bi-person fs-4 d-block mb-1"></i>
-        ตั้งค่า
+      <a href="{{ url_for('history') }}" class="mobile-nav-item {% if request.endpoint == 'history' %}active{% endif %}">
+        <i class="bi bi-clock-history"></i>
+        <span>ประวัติ</span>
+      </a>
+      <a href="{{ url_for('profile') }}" class="mobile-nav-item {% if request.endpoint == 'profile' %}active{% endif %}">
+        <i class="bi bi-person"></i>
+        <span>ตั้งค่า</span>
       </a>
     </div>
   </nav>
-  
-  <style>
-    /* Add padding to body so the fixed bottom nav doesn't overlap content */
-    @media (max-width: 767.98px) {
-      body {
-        padding-bottom: 70px;
-      }
-    }
-  </style>
   {% endif %}
 
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
   <script>
-    // Fix for iOS standalone mode to ensure links open in the same "app" window
-    (function(a,b,c){if(c in b&&b[c]){var d,e=a.location,f=/^(a|html)$/i;a.addEventListener("click",function(a){d=a.target;while(!f.test(d.nodeName))d=d.parentNode;"href"in d&&(d.href.indexOf("http")||~d.href.indexOf(e.host))&&(a.preventDefault(),e.href=d.href)},!1)}})(document,window.navigator,"standalone");
+    // =====================================================
+    // TOAST SYSTEM — แทน Flash Messages
+    // =====================================================
+    function showToast(message, type = 'success', duration = 4000) {
+      const container = document.getElementById('toastContainer');
+      if (!container) return;
 
-    // Smooth Page Transition
+      const iconMap = {
+        success: 'bi-check-circle-fill',
+        danger: 'bi-x-circle-fill',
+        warning: 'bi-exclamation-triangle-fill',
+        info: 'bi-info-circle-fill',
+      };
+      const colorMap = {
+        success: '#34d399',
+        danger: '#fb7185',
+        warning: '#fbbf24',
+        info: '#60a5fa',
+      };
+
+      const id = 'toast_' + Date.now();
+      const icon = iconMap[type] || iconMap.info;
+      const color = colorMap[type] || colorMap.info;
+
+      const toastEl = document.createElement('div');
+      toastEl.id = id;
+      toastEl.className = 'app-toast';
+      toastEl.innerHTML = `
+        <div class="app-toast-icon" style="color:${color}">
+          <i class="bi ${icon}"></i>
+        </div>
+        <div class="app-toast-msg">${message}</div>
+        <button class="app-toast-close" onclick="dismissToast('${id}')">
+          <i class="bi bi-x"></i>
+        </button>
+        <div class="app-toast-progress" style="background:${color}"></div>
+      `;
+      container.appendChild(toastEl);
+
+      // Animate in
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => toastEl.classList.add('show'));
+      });
+
+      // Progress bar animation
+      const bar = toastEl.querySelector('.app-toast-progress');
+      if (bar) {
+        bar.style.transition = `width ${duration}ms linear`;
+        requestAnimationFrame(() => { bar.style.width = '0%'; });
+      }
+
+      // Auto dismiss
+      const timer = setTimeout(() => dismissToast(id), duration);
+      toastEl.dataset.timer = timer;
+    }
+
+    function dismissToast(id) {
+      const el = document.getElementById(id);
+      if (!el) return;
+      clearTimeout(parseInt(el.dataset.timer));
+      el.classList.add('hide');
+      el.addEventListener('transitionend', () => el.remove(), { once: true });
+    }
+
+    // Convert flask flash messages to toasts
     document.addEventListener('DOMContentLoaded', () => {
+      const flashData = document.getElementById('flashData');
+      if (flashData) {
+        flashData.querySelectorAll('span[data-msg]').forEach(span => {
+          showToast(span.dataset.msg, span.dataset.cat);
+        });
+      }
+
+      // Smooth Page Transition
       document.body.addEventListener('click', e => {
         const link = e.target.closest('a');
         if (!link) return;
-        
-        // Skip external, new tab, download, same page, or javascript links
+
         if (
-          link.hostname !== window.location.hostname || 
-          link.target === '_blank' || 
-          link.hasAttribute('download') || 
-          link.href.startsWith('javascript:') || 
+          link.hostname !== window.location.hostname ||
+          link.target === '_blank' ||
+          link.hasAttribute('download') ||
+          link.href.startsWith('javascript:') ||
           link.getAttribute('href')?.startsWith('#') ||
           e.ctrlKey || e.metaKey || e.shiftKey
         ) return;
 
         e.preventDefault();
         const href = link.href;
-        
         document.body.classList.add('page-transition-out');
-        
-        setTimeout(() => {
-          window.location.href = href;
-        }, 300); // 300ms matches CSS transition duration
+        setTimeout(() => { window.location.href = href; }, 220);
       });
     });
+
+    // Fix for iOS standalone mode
+    (function(a,b,c){if(c in b&&b[c]){var d,e=a.location,f=/^(a|html)$/i;a.addEventListener("click",function(a){d=a.target;while(!f.test(d.nodeName))d=d.parentNode;"href"in d&&(d.href.indexOf("http")||~d.href.indexOf(e.host))&&(a.preventDefault(),e.href=d.href)},!1)}})(document,window.navigator,"standalone");
   </script>
   {% block scripts %}{% endblock %}
 </body>

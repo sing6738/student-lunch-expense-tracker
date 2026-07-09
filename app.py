@@ -19,8 +19,8 @@ from flask_wtf import CSRFProtect
 from sqlalchemy import extract, func
 
 from config import Config
-from forms import BudgetForm, ExpenseForm, LoginForm, RegisterForm, ProfileForm, OnlineOrderForm
-from models import EXPENSE_CATEGORIES, Expense, Menu, Restaurant, User, db, OnlineOrder
+from forms import BudgetForm, ExpenseForm, LoginForm, RegisterForm, ProfileForm, OnlineOrderForm, MonthlyBudgetForm
+from models import EXPENSE_CATEGORIES, Expense, Menu, Restaurant, User, db, OnlineOrder, MonthlyBudget
 
 
 csrf = CSRFProtect()
@@ -86,8 +86,8 @@ def create_app():
         response.headers['Content-Security-Policy'] = (
             "default-src 'self'; "
             "script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; "
-            "style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; "
-            "font-src 'self' https://cdn.jsdelivr.net; "
+            "style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://fonts.googleapis.com; "
+            "font-src 'self' https://cdn.jsdelivr.net https://fonts.gstatic.com; "
             "img-src 'self' data:; "
             "connect-src 'self'"
         )
@@ -274,7 +274,7 @@ def analytics_payload(user_id):
         .limit(30)
         .all()
     )
-    daily_rows.reverse() # Show in chronological order (oldest to newest)
+    daily_rows.reverse()  # Show in chronological order (oldest to newest)
 
     monthly_labels = [f"{int(month):02d}/{int(year)}" for year, month, _ in monthly_rows]
     monthly_values = [float(total) for _, _, total in monthly_rows]
@@ -294,6 +294,39 @@ def analytics_payload(user_id):
             "values": [float(row[1] or 0) for row in daily_rows],
         },
     }
+
+
+def get_or_create_monthly_budget(user_id, year, month):
+    """ดึงหรือสร้าง MonthlyBudget สำหรับเดือนที่กำหนด"""
+    budget = MonthlyBudget.query.filter_by(
+        user_id=user_id, year=year, month=month
+    ).first()
+    if budget is None:
+        # ลองคัดลอกข้อมูลจากเดือนก่อน
+        prev_month = month - 1 if month > 1 else 12
+        prev_year = year if month > 1 else year - 1
+        prev = MonthlyBudget.query.filter_by(
+            user_id=user_id, year=prev_year, month=prev_month
+        ).first()
+        if prev:
+            budget = MonthlyBudget(
+                user_id=user_id,
+                year=year,
+                month=month,
+                monthly_income=prev.monthly_income,
+                fixed_internet=prev.fixed_internet,
+                fixed_phone=prev.fixed_phone,
+                fixed_water=prev.fixed_water,
+                fixed_electric=prev.fixed_electric,
+                fixed_rent=prev.fixed_rent,
+                fixed_other=prev.fixed_other,
+                fixed_other_note=prev.fixed_other_note,
+            )
+        else:
+            budget = MonthlyBudget(user_id=user_id, year=year, month=month)
+        db.session.add(budget)
+        db.session.commit()
+    return budget
 
 
 def register_routes(app):
@@ -365,7 +398,6 @@ def register_routes(app):
                 if wishlist_name:
                     try:
                         user.wishlist_name = wishlist_name.strip()
-                        # If wishlist_price is empty, None, or only whitespace, default to 0.0
                         if not wishlist_price or not str(wishlist_price).strip():
                             user.wishlist_price = 0.0
                         else:
@@ -388,8 +420,8 @@ def register_routes(app):
             .limit(10)
             .all()
         )
-        
-        # Calculate actual income based on days attended (days with expenses in this month)
+
+        # คำนวณจากจำนวนวันที่มีรายการ (วันเรียน)
         month_expenses = Expense.query.filter(
             Expense.user_id == user.id,
             Expense.expense_date >= month_start,
@@ -398,25 +430,35 @@ def register_routes(app):
 
         days_attended_set = set(exp.expense_date for exp in month_expenses)
         days_attended = len(days_attended_set)
-        
+
         total_income = days_attended * 100
         total_savings = total_income - float(month_total or 0)
-        
+
         bills_goal = 650
         bills_saved = min(total_savings, bills_goal) if total_savings > 0 else 0
         bills_progress = min(round((bills_saved / bills_goal) * 100, 1), 100) if bills_goal > 0 else 0
         personal_savings = total_savings - bills_goal if total_savings > bills_goal else 0
 
-        # Spending Insights by Category
+        # หมวดหมู่
         category_totals = {}
         calendar_data = {}
         for exp in month_expenses:
             category_totals[exp.category] = category_totals.get(exp.category, 0) + exp.price
             d_str = exp.expense_date.strftime("%Y-%m-%d")
             calendar_data[d_str] = calendar_data.get(d_str, 0) + exp.price
-            
+
         import calendar
         cal_month = calendar.monthcalendar(today.year, today.month)
+
+        # Monthly Budget ของเดือนนี้
+        mb = get_or_create_monthly_budget(user.id, today.year, today.month)
+        mb_setup_needed = mb.monthly_income == 0  # แจ้งเตือนหากยังไม่ได้ตั้งงบ
+
+        # คำนวณ % เทียบกับงบรายเดือน
+        mb_spend_pct = 0
+        mb_variable_budget = mb.remaining_for_variable
+        if mb_variable_budget > 0:
+            mb_spend_pct = min(round((float(month_total or 0) / mb_variable_budget) * 100, 1), 999)
 
         return render_template(
             "dashboard.html",
@@ -435,7 +477,10 @@ def register_routes(app):
             category_totals=category_totals,
             calendar_data=calendar_data,
             cal_month=cal_month,
-            today=today
+            today=today,
+            monthly_budget=mb,
+            mb_setup_needed=mb_setup_needed,
+            mb_spend_pct=mb_spend_pct,
         )
 
     @app.route("/expenses/add", methods=["GET", "POST"])
@@ -460,6 +505,9 @@ def register_routes(app):
                 )
                 db.session.add(expense)
                 db.session.commit()
+                # รองรับ AJAX
+                if request.headers.get("X-Requested-With") == "XMLHttpRequest":
+                    return jsonify({"ok": True, "message": "บันทึกรายการอาหารแล้ว"})
                 flash("บันทึกรายการอาหารแล้ว", "success")
                 return redirect(url_for("dashboard"))
         return render_template("add_expense.html", form=form, menus_by_restaurant=get_menu_payload())
@@ -599,6 +647,136 @@ def register_routes(app):
             return redirect(url_for("dashboard"))
         return render_template("budget.html", form=form)
 
+    # =========================================================
+    # Monthly Budget Routes — ระบบงบประมาณรายเดือน
+    # =========================================================
+
+    @app.route("/monthly-budget", methods=["GET", "POST"])
+    @login_required
+    def monthly_budget():
+        """หน้าตั้งค่างบประมาณรายเดือน"""
+        user = current_user()
+        today = date.today()
+
+        # รองรับการดู/แก้ไขเดือนอื่น
+        year = request.args.get("year", today.year, type=int)
+        month = request.args.get("month", today.month, type=int)
+
+        mb = get_or_create_monthly_budget(user.id, year, month)
+        form = MonthlyBudgetForm(obj=mb)
+
+        if form.validate_on_submit():
+            mb.monthly_income = form.monthly_income.data or 0.0
+            mb.fixed_internet = form.fixed_internet.data or 0.0
+            mb.fixed_phone = form.fixed_phone.data or 0.0
+            mb.fixed_water = form.fixed_water.data or 0.0
+            mb.fixed_electric = form.fixed_electric.data or 0.0
+            mb.fixed_rent = form.fixed_rent.data or 0.0
+            mb.fixed_other = form.fixed_other.data or 0.0
+            mb.fixed_other_note = form.fixed_other_note.data or None
+            db.session.commit()
+            flash(f"บันทึกงบประมาณเดือน {month:02d}/{year} เรียบร้อยแล้ว ✅", "success")
+            return redirect(url_for("monthly_budget", year=year, month=month))
+
+        # ยอดรายจ่ายจริงของเดือนนี้
+        month_start = date(year, month, 1)
+        import calendar as cal_module
+        last_day = cal_module.monthrange(year, month)[1]
+        month_end = date(year, month, last_day)
+
+        actual_spend = float(period_total(user.id, month_start, month_end))
+
+        # รายละเอียดหมวดหมู่
+        month_expenses = Expense.query.filter(
+            Expense.user_id == user.id,
+            Expense.expense_date >= month_start,
+            Expense.expense_date <= month_end,
+        ).all()
+        category_totals = {}
+        for exp in month_expenses:
+            category_totals[exp.category] = category_totals.get(exp.category, 0) + exp.price
+
+        # navigate months
+        prev_month = month - 1 if month > 1 else 12
+        prev_year = year if month > 1 else year - 1
+        next_month = month + 1 if month < 12 else 1
+        next_year = year if month < 12 else year + 1
+
+        THAI_MONTHS = [
+            "", "มกราคม", "กุมภาพันธ์", "มีนาคม", "เมษายน",
+            "พฤษภาคม", "มิถุนายน", "กรกฎาคม", "สิงหาคม",
+            "กันยายน", "ตุลาคม", "พฤศจิกายน", "ธันวาคม"
+        ]
+
+        return render_template(
+            "monthly_budget.html",
+            form=form,
+            mb=mb,
+            year=year,
+            month=month,
+            month_name=THAI_MONTHS[month],
+            actual_spend=actual_spend,
+            category_totals=category_totals,
+            prev_month=prev_month,
+            prev_year=prev_year,
+            next_month=next_month,
+            next_year=next_year,
+            today=today,
+        )
+
+    @app.route("/monthly-budget/summary")
+    @login_required
+    def monthly_budget_summary():
+        """หน้าสรุปงบประมาณทุกเดือน"""
+        user = current_user()
+        today = date.today()
+
+        # ดึงงบประมาณทุกเดือนที่มีข้อมูล (12 เดือนล่าสุด)
+        budgets = (
+            MonthlyBudget.query.filter_by(user_id=user.id)
+            .order_by(MonthlyBudget.year.desc(), MonthlyBudget.month.desc())
+            .limit(12)
+            .all()
+        )
+
+        summary_data = []
+        for mb in budgets:
+            import calendar as cal_module
+            last_day = cal_module.monthrange(mb.year, mb.month)[1]
+            month_start = date(mb.year, mb.month, 1)
+            month_end = date(mb.year, mb.month, last_day)
+            actual = float(period_total(user.id, month_start, month_end))
+            summary_data.append({
+                "year": mb.year,
+                "month": mb.month,
+                "income": mb.monthly_income,
+                "fixed": mb.total_fixed,
+                "variable_budget": mb.remaining_for_variable,
+                "actual_spend": actual,
+                "net": mb.monthly_income - mb.total_fixed - actual,
+                "mb": mb,
+            })
+
+        return render_template(
+            "monthly_budget_summary.html",
+            summary_data=summary_data,
+            today=today,
+        )
+
+    @app.route("/api/monthly-budget/setup-check")
+    @login_required
+    def api_monthly_budget_check():
+        """API ตรวจสอบว่าเดือนนี้ได้ตั้งงบแล้วหรือยัง"""
+        today = date.today()
+        mb = MonthlyBudget.query.filter_by(
+            user_id=session["user_id"],
+            year=today.year,
+            month=today.month,
+        ).first()
+        if mb is None or mb.monthly_income == 0:
+            return jsonify({"setup_needed": True})
+        return jsonify({"setup_needed": False, "income": mb.monthly_income})
+
     @app.route("/profile", methods=["GET", "POST"])
     @login_required
     def profile():
@@ -618,14 +796,14 @@ def register_routes(app):
 
                 if form.new_password.data:
                     user.set_password(form.new_password.data)
-                
+
                 db.session.commit()
                 flash("แก้ไขข้อมูลส่วนตัวสำเร็จ", "success")
                 return redirect(url_for("profile"))
-                
+
         total_expenses = Expense.query.filter_by(user_id=user.id).count()
         total_spent = db.session.query(func.coalesce(func.sum(Expense.price), 0)).filter(Expense.user_id == user.id).scalar()
-        
+
         return render_template("profile.html", form=form, total_expenses=total_expenses, total_spent=total_spent, today=date.today())
 
     @app.route("/online-orders")
@@ -705,7 +883,7 @@ def register_routes(app):
                     note_parts.append(f"เลขพัสดุ: {order.tracking_number}")
                 if order.note:
                     note_parts.append(f"หมายเหตุ: {order.note}")
-                
+
                 expense = Expense(
                     user_id=session["user_id"],
                     menu_id=menu.id,
@@ -819,10 +997,10 @@ def register_routes(app):
         order = OnlineOrder.query.filter_by(id=order_id, user_id=session["user_id"]).first_or_404()
         new_status = request.form.get("status")
         valid_statuses = ["สั่งซื้อแล้ว", "กำลังจัดส่ง", "ได้รับแล้ว", "ยกเลิก"]
-        
+
         if new_status in valid_statuses:
             order.status = new_status
-            
+
             if order.status == "ยกเลิก":
                 if order.expense_id:
                     expense = db.session.get(Expense, order.expense_id)
@@ -876,7 +1054,7 @@ def register_routes(app):
                     db.session.add(expense)
                     db.session.flush()
                     order.expense_id = expense.id
-                    
+
             db.session.commit()
             flash("อัปเดตสถานะรายการสั่งซื้อเรียบร้อย", "success")
         else:

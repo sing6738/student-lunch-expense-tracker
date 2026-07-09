@@ -1,0 +1,181 @@
+{% extends "base.html" %}
+{% block title %}สรุปงบประมาณทุกเดือน{% endblock %}
+{% block content %}
+
+<div class="animate-in stagger-1">
+  <div class="page-heading">
+    <div>
+      <h1><i class="bi bi-list-ul" style="color:var(--purple-400)"></i> สรุปงบประมาณทุกเดือน</h1>
+      <p>ภาพรวมรายรับ รายจ่ายคงที่ และเงินออม</p>
+    </div>
+    <a href="{{ url_for('monthly_budget') }}" class="btn btn-primary">
+      <i class="bi bi-calendar2-check"></i> เดือนนี้
+    </a>
+  </div>
+</div>
+
+{% set THAI_MONTHS = ["", "ม.ค.", "ก.พ.", "มี.ค.", "เม.ย.", "พ.ค.", "มิ.ย.", "ก.ค.", "ส.ค.", "ก.ย.", "ต.ค.", "พ.ย.", "ธ.ค."] %}
+
+{% if summary_data %}
+<section class="panel animate-in stagger-2">
+  <div class="table-responsive">
+    <table class="table align-middle mb-0">
+      <thead>
+        <tr>
+          <th>เดือน</th>
+          <th class="text-end">รายรับ</th>
+          <th class="text-end">ค่าคงที่</th>
+          <th class="text-end">งบอาหาร</th>
+          <th class="text-end">ใช้จริง</th>
+          <th class="text-end">คงเหลือ</th>
+          <th class="text-center">สถานะ</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for row in summary_data %}
+        {% set is_current = (row.year == today.year and row.month == today.month) %}
+        <tr {% if is_current %}class="table-current-month"{% endif %}>
+          <td>
+            <span class="fw-bold" style="color:{% if is_current %}var(--purple-300){% else %}var(--text-primary){% endif %}">
+              {{ THAI_MONTHS[row.month] }} {{ row.year }}
+            </span>
+            {% if is_current %}<span class="badge ms-1" style="background:rgba(139,92,246,0.2);color:var(--purple-300);font-size:0.65rem;">เดือนนี้</span>{% endif %}
+          </td>
+          <td class="text-end" style="color:#38bdf8;">{{ row.income|baht }}</td>
+          <td class="text-end" style="color:#fb7185;">{{ row.fixed|baht }}</td>
+          <td class="text-end" style="color:#34d399;">{{ row.variable_budget|baht }}</td>
+          <td class="text-end" style="color:{% if row.actual_spend > row.variable_budget %}var(--danger){% else %}var(--text-primary){% endif %};">
+            {{ row.actual_spend|baht }}
+          </td>
+          <td class="text-end fw-bold" style="color:{% if row.net >= 0 %}var(--success){% else %}var(--danger){% endif %};">
+            {% if row.net >= 0 %}+{% endif %}{{ row.net|baht }}
+          </td>
+          <td class="text-center">
+            {% if row.income == 0 %}
+              <span class="badge" style="background:rgba(251,191,36,0.15);color:var(--warning);border:1px solid rgba(251,191,36,0.3);">ยังไม่ตั้งงบ</span>
+            {% elif row.actual_spend > row.variable_budget %}
+              <span class="badge" style="background:rgba(251,113,133,0.15);color:var(--danger);border:1px solid rgba(251,113,133,0.3);">เกินงบ</span>
+            {% elif row.actual_spend > row.variable_budget * 0.8 %}
+              <span class="badge" style="background:rgba(251,191,36,0.15);color:var(--warning);border:1px solid rgba(251,191,36,0.3);">ใกล้เต็ม</span>
+            {% else %}
+              <span class="badge" style="background:rgba(52,211,153,0.15);color:var(--success);border:1px solid rgba(52,211,153,0.3);">ปกติ</span>
+            {% endif %}
+          </td>
+          <td>
+            <a href="{{ url_for('monthly_budget', year=row.year, month=row.month) }}" class="btn btn-sm btn-outline-primary">
+              <i class="bi bi-pencil-square"></i>
+            </a>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<!-- Chart สรุป -->
+{% if summary_data|length > 1 %}
+<section class="panel animate-in stagger-3 mt-4" style="height:320px;">
+  <div class="panel-title mb-2">
+    <h2><i class="bi bi-bar-chart-line"></i> กราฟเปรียบเทียบรายเดือน</h2>
+  </div>
+  <canvas id="summaryChart"></canvas>
+</section>
+{% endif %}
+
+{% else %}
+<section class="panel animate-in stagger-2 text-center py-5">
+  <div style="font-size:4rem;margin-bottom:16px;opacity:0.5;">📅</div>
+  <h3 style="color:var(--text-secondary);">ยังไม่มีข้อมูลงบประมาณ</h3>
+  <p class="text-muted">เริ่มตั้งงบประมาณเดือนแรกของคุณได้เลย!</p>
+  <a href="{{ url_for('monthly_budget') }}" class="btn btn-primary mt-2">
+    <i class="bi bi-plus-circle"></i> ตั้งงบประมาณ
+  </a>
+</section>
+{% endif %}
+
+<style>
+.table-current-month td {
+  background: rgba(139,92,246,0.04);
+}
+</style>
+
+{% if summary_data|length > 1 %}
+{% block scripts %}
+<script>
+(function() {
+  const rawData = [
+    {% for row in summary_data %}
+    { month: {{ row.month }}, year: {{ row.year }}, income: {{ row.income }}, fixed: {{ row.fixed }}, actual_spend: {{ row.actual_spend }} },
+    {% endfor %}
+  ];
+  const labels = rawData.map(r => {
+    const MONTHS = ["","ม.ค.","ก.พ.","มี.ค.","เม.ย.","พ.ค.","มิ.ย.","ก.ค.","ส.ค.","ก.ย.","ต.ค.","พ.ย.","ธ.ค."];
+    return MONTHS[r.month] + ' ' + r.year;
+  }).reverse();
+  const incomes = rawData.map(r => r.income).reverse();
+  const actuals = rawData.map(r => r.actual_spend).reverse();
+  const fixeds = rawData.map(r => r.fixed).reverse();
+
+  const ctx = document.getElementById('summaryChart');
+  if (!ctx) return;
+  new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels,
+      datasets: [
+        {
+          label: 'รายรับ',
+          data: incomes,
+          backgroundColor: 'rgba(56,189,248,0.4)',
+          borderColor: '#38bdf8',
+          borderWidth: 1,
+          borderRadius: 6,
+        },
+        {
+          label: 'ค่าคงที่',
+          data: fixeds,
+          backgroundColor: 'rgba(251,113,133,0.4)',
+          borderColor: '#fb7185',
+          borderWidth: 1,
+          borderRadius: 6,
+        },
+        {
+          label: 'ใช้จริง',
+          data: actuals,
+          backgroundColor: 'rgba(251,191,36,0.5)',
+          borderColor: '#fbbf24',
+          borderWidth: 1,
+          borderRadius: 6,
+        },
+      ]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      animation: { duration: 1200, easing: 'easeOutQuart' },
+      plugins: {
+        legend: {
+          labels: { color: 'rgba(255,255,255,0.7)', font: { family: 'Sarabun' } }
+        }
+      },
+      scales: {
+        y: {
+          beginAtZero: true,
+          grid: { color: 'rgba(255,255,255,0.05)' },
+          ticks: { color: 'rgba(255,255,255,0.5)' }
+        },
+        x: {
+          grid: { display: false },
+          ticks: { color: 'rgba(255,255,255,0.5)' }
+        }
+      }
+    }
+  });
+})();
+</script>
+{% endblock %}
+{% endif %}
+
+{% endblock %}
