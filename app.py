@@ -22,6 +22,7 @@ from sqlalchemy import extract, func
 from config import Config
 from forms import BudgetForm, ExpenseForm, LoginForm, RegisterForm, ProfileForm, OnlineOrderForm, MonthlyBudgetForm
 from models import EXPENSE_CATEGORIES, Expense, Menu, Restaurant, User, db, OnlineOrder, MonthlyBudget
+from sqlalchemy.orm import joinedload
 
 
 csrf = CSRFProtect()
@@ -425,6 +426,7 @@ def register_routes(app):
         month_total = period_total(user.id, month_start, today)
         latest_expenses = (
             Expense.query.filter_by(user_id=user.id)
+            .options(joinedload(Expense.menu).joinedload(Menu.restaurant))
             .order_by(Expense.expense_date.desc(), Expense.created_at.desc())
             .limit(10)
             .all()
@@ -1081,7 +1083,7 @@ def register_routes(app):
     @app.route("/manage-menus")
     @login_required
     def manage_menus():
-        restaurants = Restaurant.query.order_by(Restaurant.name.asc()).all()
+        restaurants = Restaurant.query.options(joinedload(Restaurant.menus)).order_by(Restaurant.name.asc()).all()
         return render_template("manage_menu.html", restaurants=restaurants)
 
     @app.route("/restaurants/add", methods=["POST"])
