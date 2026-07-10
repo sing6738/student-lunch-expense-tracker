@@ -2,6 +2,7 @@ import csv
 import io
 from datetime import date, datetime, timedelta
 from functools import wraps
+from urllib.parse import urlsplit
 
 from flask import (
     Flask,
@@ -145,7 +146,10 @@ def seed_restaurants_and_menus():
 def register_template_filters(app):
     @app.template_filter("baht")
     def baht(value):
-        return f"{float(value or 0):,.2f}"
+        try:
+            return f"{float(value or 0):,.2f}"
+        except (ValueError, TypeError):
+            return "0.00"
 
 
 def login_required(view):
@@ -331,8 +335,16 @@ def get_or_create_monthly_budget(user_id, year, month):
             )
         else:
             budget = MonthlyBudget(user_id=user_id, year=year, month=month)
-        db.session.add(budget)
-        db.session.commit()
+        
+        try:
+            db.session.add(budget)
+            db.session.commit()
+        except Exception:
+            db.session.rollback()
+            # ดึงข้อมูลอีกครั้งหากถูกสร้างโดย thread/process อื่นในระหว่างนี้
+            budget = MonthlyBudget.query.filter_by(
+                user_id=user_id, year=year, month=month
+            ).first()
     return budget
 
 
@@ -351,8 +363,8 @@ def register_routes(app):
     def register():
         form = RegisterForm()
         if form.validate_on_submit():
-            username_exists = User.query.filter_by(username=form.username.data.strip()).first()
-            email_exists = User.query.filter_by(email=form.email.data.strip().lower()).first()
+            username_exists = User.query.filter(func.lower(User.username) == form.username.data.strip().lower()).first()
+            email_exists = User.query.filter(func.lower(User.email) == form.email.data.strip().lower()).first()
             if username_exists:
                 flash("ชื่อผู้ใช้นี้ถูกใช้งานแล้ว", "danger")
             elif email_exists:
@@ -373,13 +385,20 @@ def register_routes(app):
     def login():
         form = LoginForm()
         if form.validate_on_submit():
-            user = User.query.filter_by(username=form.username.data.strip()).first()
+            user = User.query.filter(func.lower(User.username) == form.username.data.strip().lower()).first()
             if user and user.check_password(form.password.data):
                 session.clear()
                 session["user_id"] = user.id
                 session["username"] = user.username
                 flash("เข้าสู่ระบบสำเร็จ", "success")
-                return redirect(request.args.get("next") or url_for("dashboard"))
+                next_page = request.args.get("next")
+                if next_page:
+                    parsed_url = urlsplit(next_page)
+                    if parsed_url.netloc or parsed_url.scheme:
+                        next_page = url_for("dashboard")
+                else:
+                    next_page = url_for("dashboard")
+                return redirect(next_page)
             flash("ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง", "danger")
         return render_template("login.html", form=form)
 
@@ -405,25 +424,37 @@ def register_routes(app):
                 daily_budget = request.form.get("daily_budget")
                 try:
                     if daily_budget and str(daily_budget).strip():
-                        user.daily_budget = float(daily_budget)
+                        val = float(daily_budget)
+                        if val < 0:
+                            raise ValueError("งบประมาณต้องไม่ติดลบ")
+                        user.daily_budget = val
                     else:
                         user.daily_budget = 100.0
                     
                     if wishlist_name and str(wishlist_name).strip():
                         user.wishlist_name = wishlist_name.strip()
-                        user.wishlist_price = float(wishlist_price) if wishlist_price and str(wishlist_price).strip() else 0.0
+                        price_val = float(wishlist_price) if wishlist_price and str(wishlist_price).strip() else 0.0
+                        if price_val < 0:
+                            raise ValueError("ราคาเป้าหมายต้องไม่ติดลบ")
+                        user.wishlist_price = price_val
                     db.session.commit()
                     flash("ตั้งเป้าหมายและงบรายวันเรียบร้อยแล้ว", "success")
-                except ValueError:
-                    flash("ราคาหรืองบไม่ถูกต้อง", "danger")
+                except ValueError as e:
+                    msg = str(e) if "ไม่ติดลบ" in str(e) else "ราคาหรืองบไม่ถูกต้อง"
+                    flash(msg, "danger")
             return redirect(url_for("dashboard"))
 
         today = date.today()
         week_start = today - timedelta(days=today.weekday())
         month_start = today.replace(day=1)
+        
+        import calendar as cal_module
+        last_day = cal_module.monthrange(today.year, today.month)[1]
+        month_end = today.replace(day=last_day)
+
         today_total = period_total(user.id, today, today)
         week_total = period_total(user.id, week_start, today)
-        month_total = period_total(user.id, month_start, today)
+        month_total = period_total(user.id, month_start, month_end)
         latest_expenses = (
             Expense.query.filter_by(user_id=user.id)
             .options(joinedload(Expense.menu).joinedload(Menu.restaurant))
@@ -432,14 +463,14 @@ def register_routes(app):
             .all()
         )
 
-        # คำนวณจากจำนวนวันที่มีรายการ (วันเรียน)
+        # คำนวณจากจำนวนวันที่มีรายการ (วันเรียน) ในเดือนนี้ทั้งหมด
         month_expenses = Expense.query.filter(
             Expense.user_id == user.id,
             Expense.expense_date >= month_start,
-            Expense.expense_date <= today
+            Expense.expense_date <= month_end
         ).all()
 
-        days_attended_set = set(exp.expense_date for exp in month_expenses)
+        days_attended_set = set(exp.expense_date for exp in month_expenses if exp.expense_date <= today)
         days_attended = len(days_attended_set)
 
         # Monthly Budget ของเดือนนี้
@@ -470,8 +501,7 @@ def register_routes(app):
             d_str = exp.expense_date.strftime("%Y-%m-%d")
             calendar_data[d_str] = calendar_data.get(d_str, 0) + exp.price
 
-        import calendar
-        cal_month = calendar.monthcalendar(today.year, today.month)
+        cal_month = cal_module.monthcalendar(today.year, today.month)
 
         # คำนวณ % เทียบกับงบรายเดือน
         mb_spend_pct = 0
@@ -507,7 +537,10 @@ def register_routes(app):
     def add_expense():
         form = ExpenseForm()
         if request.method == "POST":
-            form.restaurant_id.data = int(request.form.get("restaurant_id", 0))
+            try:
+                form.restaurant_id.data = int(request.form.get("restaurant_id", 0))
+            except (ValueError, TypeError):
+                form.restaurant_id.data = 0
         populate_expense_form_choices(form)
         if form.validate_on_submit():
             menu = db.session.get(Menu, form.menu_id.data)
@@ -529,6 +562,9 @@ def register_routes(app):
                     return jsonify({"ok": True, "message": "บันทึกรายการอาหารแล้ว"})
                 flash("บันทึกรายการอาหารแล้ว", "success")
                 return redirect(url_for("dashboard"))
+        else:
+            if request.method == "POST" and (request.headers.get("X-Requested-With") == "XMLHttpRequest" or request.is_json):
+                return jsonify({"ok": False, "errors": form.errors}), 400
         return render_template("add_expense.html", form=form, menus_by_restaurant=get_menu_payload())
 
     @app.route("/expenses/<int:expense_id>/edit", methods=["GET", "POST"])
@@ -543,7 +579,10 @@ def register_routes(app):
             form.restaurant_id.data = expense.menu.restaurant_id
             form.menu_id.data = expense.menu_id
         elif request.method == "POST":
-            form.restaurant_id.data = int(request.form.get("restaurant_id", 0))
+            try:
+                form.restaurant_id.data = int(request.form.get("restaurant_id", 0))
+            except (ValueError, TypeError):
+                form.restaurant_id.data = 0
         populate_expense_form_choices(form)
         if form.validate_on_submit():
             menu = db.session.get(Menu, form.menu_id.data)
@@ -575,6 +614,8 @@ def register_routes(app):
     @login_required
     def history():
         page = request.args.get("page", 1, type=int)
+        if page < 1:
+            page = 1
         search_date = request.args.get("date", "", type=str)
         restaurant_id = request.args.get("restaurant_id", 0, type=int)
         category = request.args.get("category", "", type=str)
@@ -829,6 +870,8 @@ def register_routes(app):
     @login_required
     def online_orders():
         page = request.args.get("page", 1, type=int)
+        if page < 1:
+            page = 1
         search_date = request.args.get("date", "", type=str)
         platform = request.args.get("platform", "", type=str)
         status = request.args.get("status", "", type=str)
@@ -1093,7 +1136,7 @@ def register_routes(app):
         if not name:
             flash("กรุณากรอกชื่อร้านอาหาร", "danger")
         else:
-            existing = Restaurant.query.filter_by(name=name).first()
+            existing = Restaurant.query.filter(func.lower(Restaurant.name) == name.lower()).first()
             if existing:
                 flash("มีร้านอาหารชื่อนี้อยู่แล้ว", "danger")
             else:
@@ -1113,7 +1156,7 @@ def register_routes(app):
         if not name:
             flash("กรุณากรอกชื่อร้านอาหาร", "danger")
         else:
-            existing = Restaurant.query.filter(Restaurant.name == name, Restaurant.id != restaurant_id).first()
+            existing = Restaurant.query.filter(func.lower(Restaurant.name) == name.lower(), Restaurant.id != restaurant_id).first()
             if existing:
                 flash("มีร้านอาหารชื่อนี้อยู่แล้ว", "danger")
             else:
@@ -1155,7 +1198,10 @@ def register_routes(app):
         elif price < 0:
             flash("ราคาเมนูต้องไม่ต่ำกว่า 0 บาท", "danger")
         else:
-            existing = Menu.query.filter_by(restaurant_id=restaurant_id, menu_name=menu_name).first()
+            existing = Menu.query.filter(
+                Menu.restaurant_id == restaurant_id,
+                func.lower(Menu.menu_name) == menu_name.lower()
+            ).first()
             if existing:
                 flash("มีเมนูนี้ในร้านนี้อยู่แล้ว", "danger")
             else:
@@ -1183,7 +1229,11 @@ def register_routes(app):
         elif price < 0:
             flash("ราคาเมนูต้องไม่ต่ำกว่า 0 บาท", "danger")
         else:
-            existing = Menu.query.filter(Menu.restaurant_id == menu.restaurant_id, Menu.menu_name == menu_name, Menu.id != menu_id).first()
+            existing = Menu.query.filter(
+                Menu.restaurant_id == menu.restaurant_id,
+                func.lower(Menu.menu_name) == menu_name.lower(),
+                Menu.id != menu_id
+            ).first()
             if existing:
                 flash("มีเมนูนี้ในร้านนี้อยู่แล้ว", "danger")
             else:
