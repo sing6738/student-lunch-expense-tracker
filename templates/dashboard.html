@@ -7,7 +7,10 @@
       <h1>Dashboard</h1>
       <p>สรุปรายจ่ายมื้อกลางวันของคุณ</p>
     </div>
-    <a class="btn btn-primary" href="{{ url_for('add_expense') }}"><i class="bi bi-plus-lg"></i> เพิ่มรายการ</a>
+    <div class="d-flex gap-2">
+      <a class="btn btn-outline-primary" href="{{ url_for('add_multi_expenses') }}"><i class="bi bi-ui-radios"></i> เพิ่มหลายรายการ</a>
+      <a class="btn btn-primary" href="{{ url_for('add_expense') }}"><i class="bi bi-plus-lg"></i> เพิ่มรายการ</a>
+    </div>
   </div>
 </div>
 

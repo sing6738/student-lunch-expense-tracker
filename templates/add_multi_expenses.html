@@ -1,0 +1,211 @@
+{% extends "base.html" %}
+{% block title %}เพิ่มหลายรายการ{% endblock %}
+{% block content %}
+<div class="page-heading">
+  <div>
+    <h1>เพิ่มหลายรายการพร้อมกัน</h1>
+    <p>เพิ่มรายการค่าใช้จ่ายหลายรายการในครั้งเดียว</p>
+  </div>
+</div>
+
+<section class="panel form-panel">
+  <form id="multiExpenseForm">
+    <input type="hidden" id="csrfToken" value="{{ csrf_token() }}">
+    <div id="expenseRowsContainer">
+      <!-- Rows will be added here dynamically -->
+    </div>
+    
+    <div class="mb-3">
+      <button type="button" class="btn btn-outline-primary" id="addRowBtn">
+        <i class="bi bi-plus-circle"></i> เพิ่มอีก 1 รายการ
+      </button>
+    </div>
+
+    <div class="d-flex gap-2 mt-4 pt-3 border-top border-white border-opacity-10">
+      <button type="submit" class="btn btn-primary" id="submitBtn">บันทึกทั้งหมด</button>
+      <a class="btn btn-light" href="{{ url_for('dashboard') }}">ยกเลิก</a>
+    </div>
+  </form>
+</section>
+
+<!-- Template for a single row -->
+<template id="rowTemplate">
+  <div class="expense-row p-3 mb-3 border border-white border-opacity-10 rounded bg-white bg-opacity-10 animate-in stagger-1">
+    <div class="d-flex justify-content-between align-items-center mb-2">
+      <strong class="text-white" style="font-weight: 600;">รายการที่ <span class="row-number"></span></strong>
+      <button type="button" class="btn btn-sm btn-outline-danger remove-row-btn"><i class="bi bi-trash"></i> ลบ</button>
+    </div>
+    <div class="row g-2">
+      <div class="col-md-4">
+        <label class="form-label small">ร้านอาหาร</label>
+        <select class="form-select form-select-sm select-restaurant" name="restaurant_id" required>
+          {% for r in restaurants %}
+          <option value="{{ r.id }}">{{ r.name }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="col-md-4">
+        <label class="form-label small">เมนู</label>
+        <select class="form-select form-select-sm select-menu" name="menu_id" required></select>
+      </div>
+      <div class="col-md-4">
+        <label class="form-label small">ราคา (บาท)</label>
+        <input type="number" step="0.01" class="form-control form-control-sm input-price" name="price" required>
+      </div>
+      <div class="col-md-4">
+        <label class="form-label small">หมวดหมู่</label>
+        <select class="form-select form-select-sm select-category" name="category">
+          {% for cat in categories %}
+          <option value="{{ cat }}">{{ cat }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="col-md-4">
+        <label class="form-label small">วันที่</label>
+        <input type="date" class="form-control form-control-sm input-date" name="expense_date" required>
+      </div>
+      <div class="col-md-4">
+        <label class="form-label small">หมายเหตุ</label>
+        <input type="text" class="form-control form-control-sm input-note" name="note" placeholder="เช่น เลี้ยงเพื่อน">
+      </div>
+    </div>
+  </div>
+</template>
+
+{% endblock %}
+{% block scripts %}
+<script>
+  const menusByRestaurant = {{ menus_by_restaurant|tojson }};
+  const categories = {{ categories|tojson }};
+  
+  const container = document.getElementById('expenseRowsContainer');
+  const template = document.getElementById('rowTemplate');
+  const addRowBtn = document.getElementById('addRowBtn');
+  const form = document.getElementById('multiExpenseForm');
+  
+  // Set default date to today
+  const tzOffset = (new Date()).getTimezoneOffset() * 60000; 
+  const today = (new Date(Date.now() - tzOffset)).toISOString().split('T')[0];
+  
+  function updateRowNumbers() {
+    container.querySelectorAll('.expense-row').forEach((row, index) => {
+      row.querySelector('.row-number').textContent = index + 1;
+    });
+  }
+  
+  function renderMenusForSelect(restaurantId, menuSelect, priceInput) {
+    const menus = menusByRestaurant[restaurantId] || [];
+    menuSelect.innerHTML = "";
+    menus.forEach(menu => {
+      const option = document.createElement("option");
+      option.value = menu.id;
+      option.textContent = menu.name;
+      option.dataset.price = menu.price;
+      menuSelect.appendChild(option);
+    });
+    
+    // update price
+    if(menuSelect.options.length > 0) {
+      priceInput.value = Number(menuSelect.options[0].dataset.price || 0).toFixed(2);
+    } else {
+      priceInput.value = "0.00";
+    }
+  }
+
+  function addRow() {
+    const clone = template.content.cloneNode(true);
+    const rowDiv = clone.querySelector('.expense-row');
+    
+    const restaurantSelect = clone.querySelector('.select-restaurant');
+    const menuSelect = clone.querySelector('.select-menu');
+    const priceInput = clone.querySelector('.input-price');
+    const dateInput = clone.querySelector('.input-date');
+    const removeBtn = clone.querySelector('.remove-row-btn');
+    
+    dateInput.value = today;
+    
+    restaurantSelect.addEventListener('change', () => {
+      renderMenusForSelect(restaurantSelect.value, menuSelect, priceInput);
+    });
+    
+    menuSelect.addEventListener('change', () => {
+      const option = menuSelect.options[menuSelect.selectedIndex];
+      if(option) {
+        priceInput.value = Number(option.dataset.price || 0).toFixed(2);
+      }
+    });
+    
+    removeBtn.addEventListener('click', () => {
+      rowDiv.remove();
+      updateRowNumbers();
+    });
+    
+    container.appendChild(clone);
+    
+    if(restaurantSelect.options.length > 0) {
+      renderMenusForSelect(restaurantSelect.value, menuSelect, priceInput);
+    }
+    
+    updateRowNumbers();
+  }
+  
+  // Initially add 3 empty rows
+  addRow();
+  addRow();
+  addRow();
+  
+  addRowBtn.addEventListener('click', addRow);
+  
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    
+    const rows = container.querySelectorAll('.expense-row');
+    if(rows.length === 0) {
+      alert("กรุณาเพิ่มอย่างน้อย 1 รายการ");
+      return;
+    }
+    
+    const submitBtn = document.getElementById('submitBtn');
+    submitBtn.disabled = true;
+    submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> กำลังบันทึก...';
+    
+    const expenses = [];
+    rows.forEach(row => {
+      expenses.push({
+        restaurant_id: row.querySelector('.select-restaurant').value,
+        menu_id: row.querySelector('.select-menu').value,
+        price: row.querySelector('.input-price').value,
+        category: row.querySelector('.select-category').value,
+        expense_date: row.querySelector('.input-date').value,
+        note: row.querySelector('.input-note').value
+      });
+    });
+    
+    try {
+      const response = await fetch("{{ url_for('add_multi_expenses') }}", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "X-CSRFToken": document.getElementById("csrfToken").value,
+          "X-Requested-With": "XMLHttpRequest"
+        },
+        body: JSON.stringify({ expenses })
+      });
+      
+      const data = await response.json();
+      if(data.ok) {
+        window.location.href = data.redirect || "{{ url_for('dashboard') }}";
+      } else {
+        alert(data.message || "เกิดข้อผิดพลาดในการบันทึก");
+        submitBtn.disabled = false;
+        submitBtn.textContent = 'บันทึกทั้งหมด';
+      }
+    } catch(err) {
+      console.error(err);
+      alert("เกิดข้อผิดพลาดในการเชื่อมต่อ");
+      submitBtn.disabled = false;
+      submitBtn.textContent = 'บันทึกทั้งหมด';
+    }
+  });
+</script>
+{% endblock %}

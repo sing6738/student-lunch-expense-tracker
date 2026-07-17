@@ -2,8 +2,6 @@ import csv
 import io
 from datetime import date, datetime, timedelta
 from functools import wraps
-from urllib.parse import urlsplit
-
 from flask import (
     Flask,
     Response,
@@ -66,6 +64,7 @@ MENU_SEED = {
 def create_app():
     app = Flask(__name__)
     app.config.from_object(Config)
+    app.config['SEND_FILE_MAX_AGE_DEFAULT'] = 31536000
     db.init_app(app)
     csrf.init_app(app)
 
@@ -361,6 +360,9 @@ def register_routes(app):
 
     @app.route("/register", methods=["GET", "POST"])
     def register():
+        if "user_id" in session:
+            return redirect(url_for("dashboard"))
+            
         form = RegisterForm()
         if form.validate_on_submit():
             username_exists = User.query.filter(func.lower(User.username) == form.username.data.strip().lower()).first()
@@ -383,6 +385,9 @@ def register_routes(app):
 
     @app.route("/login", methods=["GET", "POST"])
     def login():
+        if "user_id" in session:
+            return redirect(url_for("dashboard"))
+            
         form = LoginForm()
         if form.validate_on_submit():
             user = User.query.filter(func.lower(User.username) == form.username.data.strip().lower()).first()
@@ -391,14 +396,7 @@ def register_routes(app):
                 session["user_id"] = user.id
                 session["username"] = user.username
                 flash("เข้าสู่ระบบสำเร็จ", "success")
-                next_page = request.args.get("next")
-                if next_page:
-                    parsed_url = urlsplit(next_page)
-                    if parsed_url.netloc or parsed_url.scheme:
-                        next_page = url_for("dashboard")
-                else:
-                    next_page = url_for("dashboard")
-                return redirect(next_page)
+                return redirect(url_for("dashboard"))
             flash("ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง", "danger")
         return render_template("login.html", form=form)
 
@@ -566,6 +564,69 @@ def register_routes(app):
             if request.method == "POST" and (request.headers.get("X-Requested-With") == "XMLHttpRequest" or request.is_json):
                 return jsonify({"ok": False, "errors": form.errors}), 400
         return render_template("add_expense.html", form=form, menus_by_restaurant=get_menu_payload())
+
+    @app.route("/expenses/add-multi", methods=["GET", "POST"])
+    @login_required
+    def add_multi_expenses():
+        if request.method == "POST":
+            if not request.is_json:
+                return jsonify({"ok": False, "message": "Expected JSON data"}), 400
+            
+            data = request.get_json()
+            expenses_data = data.get("expenses", [])
+            if not expenses_data:
+                return jsonify({"ok": False, "message": "ไม่พบข้อมูลรายการ"}), 400
+                
+            expenses_to_add = []
+            for item in expenses_data:
+                try:
+                    restaurant_id = int(item.get("restaurant_id"))
+                    menu_id = int(item.get("menu_id"))
+                    price = float(item.get("price", 0))
+                except (TypeError, ValueError):
+                    db.session.rollback()
+                    return jsonify({"ok": False, "message": "ข้อมูลไม่ถูกต้องทั้งหมด"}), 400
+
+                if price < 0:
+                    db.session.rollback()
+                    return jsonify({"ok": False, "message": "ราคาต้องไม่ติดลบ"}), 400
+
+                menu = db.session.get(Menu, menu_id)
+                if menu is None or menu.restaurant_id != restaurant_id:
+                    db.session.rollback()
+                    return jsonify({"ok": False, "message": "ข้อมูลเมนูไม่ถูกต้อง"}), 400
+
+                exp_date_str = item.get("expense_date")
+                try:
+                    exp_date = datetime.strptime(exp_date_str, "%Y-%m-%d").date() if exp_date_str else date.today()
+                except ValueError:
+                    db.session.rollback()
+                    return jsonify({"ok": False, "message": "รูปแบบวันที่ไม่ถูกต้อง"}), 400
+
+                category = item.get("category", "อื่นๆ")
+                if category not in EXPENSE_CATEGORIES:
+                    db.session.rollback()
+                    return jsonify({"ok": False, "message": "หมวดหมู่ไม่ถูกต้อง"}), 400
+
+                expenses_to_add.append(
+                    Expense(
+                        user_id=session["user_id"],
+                        menu_id=menu.id,
+                        price=price,
+                        category=category,
+                        note=(item.get("note") or "").strip() or None,
+                        expense_date=exp_date,
+                    )
+                )
+
+            for expense in expenses_to_add:
+                db.session.add(expense)
+            db.session.commit()
+            flash(f"บันทึก {len(expenses_to_add)} รายการเรียบร้อยแล้ว", "success")
+            return jsonify({"ok": True, "redirect": url_for("dashboard")})
+                
+        restaurants = Restaurant.query.order_by(Restaurant.name.asc()).all()
+        return render_template("add_multi_expenses.html", menus_by_restaurant=get_menu_payload(), categories=EXPENSE_CATEGORIES, restaurants=restaurants)
 
     @app.route("/expenses/<int:expense_id>/edit", methods=["GET", "POST"])
     @login_required
