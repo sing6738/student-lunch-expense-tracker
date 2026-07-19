@@ -501,10 +501,12 @@ def register_routes(app):
         mb_setup_needed = mb.monthly_income == 0  # แจ้งเตือนหากยังไม่ได้ตั้งงบ
 
         if not mb_setup_needed:
-            total_income = mb.monthly_income
+            daily_income = mb.monthly_income / last_day
+            total_income = days_attended * daily_income
             bills_goal = mb.total_fixed
         else:
-            total_income = days_attended * 100
+            daily_income = 100.0
+            total_income = days_attended * daily_income
             bills_goal = 650
 
         total_savings = total_income - float(month_total or 0)
@@ -512,7 +514,7 @@ def register_routes(app):
         bills_progress = min(round((bills_saved / bills_goal) * 100, 1), 100) if bills_goal > 0 else 0
         
         # เป้าหมายหักจากเงินออมรายวัน (Daily Savings)
-        user_daily_budget = user.daily_budget if user.daily_budget is not None else 100.0
+        user_daily_budget = daily_income
         daily_savings = (days_attended * user_daily_budget) - float(month_total or 0)
         personal_savings = max(0, daily_savings)
 
@@ -540,6 +542,7 @@ def register_routes(app):
             latest_expenses=latest_expenses,
             chart_data=dashboard_chart_data(user.id),
             days_attended=days_attended,
+            daily_income=daily_income,
             total_income=total_income,
             total_savings=total_savings,
             bills_goal=bills_goal,

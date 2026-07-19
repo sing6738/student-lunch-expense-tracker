@@ -36,7 +36,9 @@
   <article class="stat-card stat-blue">
     <span>จำนวนวันที่ไปเรียนเดือนนี้</span>
     <strong style="color: #38bdf8; text-shadow: 0 0 16px rgba(56,189,248,0.4);">{{ days_attended }} วัน</strong>
-    <div class="small mt-1" style="color: rgba(186,230,253,0.85); font-weight: 500;">รายรับ: {{ total_income|baht }} บาท</div>
+    <div class="small mt-1" style="color: rgba(186,230,253,0.85); font-weight: 500;">
+      รายรับรายวัน: {{ daily_income|baht }} ฿ (รวม: {{ total_income|baht }} ฿)
+    </div>
   </article>
   <article class="stat-card stat-rose">
     <span>รายจ่ายรวมเดือนนี้</span>
