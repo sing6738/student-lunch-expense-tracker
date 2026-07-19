@@ -10,7 +10,8 @@ threads = 2
 worker_class = "gthread"
 
 # Set a timeout to prevent stuck requests from hogging the single worker.
-timeout = 30
+# Increased to 60s for Render free tier + Neon free tier auto-suspend cold starts
+timeout = 60
 
 # Max requests before restarting a worker to prevent memory leaks over time.
 max_requests = 1000

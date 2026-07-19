@@ -1,7 +1,7 @@
 import csv
 import io
 from datetime import date, datetime, timedelta
-from functools import wraps
+from functools import wraps, lru_cache
 from flask import (
     Flask,
     Response,
@@ -21,10 +21,14 @@ from sqlalchemy import extract, func
 from config import Config
 from forms import BudgetForm, ExpenseForm, LoginForm, RegisterForm, ProfileForm, OnlineOrderForm, MonthlyBudgetForm
 from models import EXPENSE_CATEGORIES, Expense, Menu, Restaurant, User, db, OnlineOrder, MonthlyBudget
-from sqlalchemy.orm import joinedload
+from sqlalchemy.orm import joinedload, contains_eager
 
 
 csrf = CSRFProtect()
+
+# Simple in-memory cache for menu/restaurant data
+# Invalidate by calling _invalidate_menu_cache()
+_menu_cache = {"payload": None, "restaurants": None}
 
 MENU_SEED = {
     "ข้าวราดแกง": [
@@ -173,8 +177,39 @@ def current_user():
     return db.session.get(User, user_id)
 
 
-def populate_expense_form_choices(form):
+def get_menu_payload():
+    if _menu_cache["payload"] is not None:
+        return _menu_cache["payload"]
     restaurants = Restaurant.query.order_by(Restaurant.name.asc()).all()
+    payload = {
+        str(restaurant.id): [
+            {"id": menu.id, "name": menu.menu_name, "price": menu.price}
+            for menu in sorted(restaurant.menus, key=lambda item: item.menu_name)
+        ]
+        for restaurant in restaurants
+    }
+    _menu_cache["payload"] = payload
+    _menu_cache["restaurants"] = restaurants
+    return payload
+
+
+def _get_cached_restaurants():
+    """Get cached restaurants list, or fetch and cache if empty."""
+    if _menu_cache["restaurants"] is not None:
+        return _menu_cache["restaurants"]
+    restaurants = Restaurant.query.order_by(Restaurant.name.asc()).all()
+    _menu_cache["restaurants"] = restaurants
+    return restaurants
+
+
+def _invalidate_menu_cache():
+    """Call this whenever restaurant/menu data is modified."""
+    _menu_cache["payload"] = None
+    _menu_cache["restaurants"] = None
+
+
+def populate_expense_form_choices(form):
+    restaurants = _get_cached_restaurants()
     form.restaurant_id.choices = [(restaurant.id, restaurant.name) for restaurant in restaurants]
 
     selected_restaurant_id = form.restaurant_id.data or (restaurants[0].id if restaurants else 0)
@@ -182,22 +217,12 @@ def populate_expense_form_choices(form):
     form.menu_id.choices = [(menu.id, menu.menu_name) for menu in menus]
 
 
-def get_menu_payload():
-    restaurants = Restaurant.query.order_by(Restaurant.name.asc()).all()
-    return {
-        str(restaurant.id): [
-            {"id": menu.id, "name": menu.menu_name, "price": menu.price}
-            for menu in sorted(restaurant.menus, key=lambda item: item.menu_name)
-        ]
-        for restaurant in restaurants
-    }
-
-
 def user_expenses_query(user_id):
     return (
         Expense.query.filter_by(user_id=user_id)
         .join(Menu)
         .join(Restaurant)
+        .options(contains_eager(Expense.menu).contains_eager(Menu.restaurant))
     )
 
 
@@ -1204,6 +1229,7 @@ def register_routes(app):
                 restaurant = Restaurant(name=name)
                 db.session.add(restaurant)
                 db.session.commit()
+                _invalidate_menu_cache()
                 flash("เพิ่มร้านอาหารสำเร็จ", "success")
         return redirect(url_for("manage_menus"))
 
@@ -1223,6 +1249,7 @@ def register_routes(app):
             else:
                 restaurant.name = name
                 db.session.commit()
+                _invalidate_menu_cache()
                 flash("แก้ไขชื่อร้านอาหารสำเร็จ", "success")
         return redirect(url_for("manage_menus"))
 
@@ -1238,6 +1265,7 @@ def register_routes(app):
         else:
             db.session.delete(restaurant)
             db.session.commit()
+            _invalidate_menu_cache()
             flash("ลบร้านอาหารสำเร็จ", "success")
         return redirect(url_for("manage_menus"))
 
@@ -1269,6 +1297,7 @@ def register_routes(app):
                 menu = Menu(restaurant_id=restaurant_id, menu_name=menu_name, price=price)
                 db.session.add(menu)
                 db.session.commit()
+                _invalidate_menu_cache()
                 flash("เพิ่มเมนูสำเร็จ", "success")
         return redirect(url_for("manage_menus"))
 
@@ -1301,6 +1330,7 @@ def register_routes(app):
                 menu.menu_name = menu_name
                 menu.price = price
                 db.session.commit()
+                _invalidate_menu_cache()
                 flash("แก้ไขเมนูสำเร็จ", "success")
         return redirect(url_for("manage_menus"))
 
@@ -1316,6 +1346,7 @@ def register_routes(app):
         else:
             db.session.delete(menu)
             db.session.commit()
+            _invalidate_menu_cache()
             flash("ลบเมนูสำเร็จ", "success")
         return redirect(url_for("manage_menus"))
 
