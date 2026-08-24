@@ -13,7 +13,9 @@ from flask import (
     request,
     session,
     url_for,
+    send_from_directory,
 )
+from flask_cors import CORS
 from flask_wtf import CSRFProtect
 from flask_wtf.csrf import CSRFError
 from sqlalchemy import extract, func
@@ -54,7 +56,7 @@ MENU_SEED = {
         ("เฟรนช์ฟรายส์", 30),
     ],
     "อื่นๆ": [
-        ("ขนม", 15),
+        ("ขนม", 10),
         ("ผลไม้", 10),
         ("กำหนดเอง", 0),
     ],
@@ -66,11 +68,14 @@ MENU_SEED = {
 
 
 def create_app():
-    app = Flask(__name__)
+    app = Flask(__name__, static_folder="static")
     app.config.from_object(Config)
     app.config['SEND_FILE_MAX_AGE_DEFAULT'] = 31536000
     db.init_app(app)
     csrf.init_app(app)
+    
+    # Initialize CORS for /api/* routes
+    CORS(app, resources={r"/api/*": {"origins": app.config.get("CORS_ORIGINS", [])}})
 
     with app.app_context():
         db.create_all()
@@ -79,6 +84,10 @@ def create_app():
     register_template_filters(app)
     register_error_handlers(app)
     register_routes(app)
+    
+    from api import api_bp
+    csrf.exempt(api_bp)
+    app.register_blueprint(api_bp)
 
     @app.after_request
     def set_security_headers(response):
@@ -88,14 +97,14 @@ def create_app():
                 'max-age=31536000; includeSubDomains'
             )
 
-        # ป้องกัน XSS - อนุญาตเฉพาะ resources จาก self และ cdn.jsdelivr.net
+        # ป้องกัน XSS - อนุญาตเฉพาะ resources จาก self และ cdn.jsdelivr.net และ localhost สำหรับ dev
         response.headers['Content-Security-Policy'] = (
-            "default-src 'self'; "
-            "script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; "
+            "default-src 'self' http://localhost:5173 http://127.0.0.1:5173 ws://localhost:5173 ws://127.0.0.1:5173; "
+            "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net http://localhost:5173; "
             "style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://fonts.googleapis.com; "
-            "font-src 'self' https://cdn.jsdelivr.net https://fonts.gstatic.com; "
+            "font-src 'self' data: https://cdn.jsdelivr.net https://fonts.gstatic.com; "
             "img-src 'self' data:; "
-            "connect-src 'self'"
+            "connect-src 'self' http://localhost:5173 http://127.0.0.1:5173 ws://localhost:5173 ws://127.0.0.1:5173"
         )
 
         # ป้องกัน Clickjacking
@@ -111,6 +120,16 @@ def create_app():
         )
 
         return response
+
+    import os
+    @app.route('/', defaults={'path': ''})
+    @app.route('/<path:path>')
+    def serve_spa(path):
+        if path.startswith('api/'):
+            abort(404)
+        if path and os.path.exists(os.path.join(app.static_folder, path)):
+            return send_from_directory(app.static_folder, path)
+        return send_from_directory(app.static_folder, 'index.html')
 
     return app
 

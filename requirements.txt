@@ -6,3 +6,5 @@ email-validator==2.2.0
 Werkzeug==3.0.3
 gunicorn==22.0.0
 psycopg2-binary==2.9.10
+flask-cors==4.0.0
+pyjwt==2.8.0

@@ -25,3 +25,8 @@ class Config:
     }
     WTF_CSRF_TIME_LIMIT = None
     ITEMS_PER_PAGE = 10
+    
+    # PWA / API Configurations
+    CORS_ORIGINS = ['http://localhost:5173', 'http://127.0.0.1:5173', 'http://localhost:5000', 'http://127.0.0.1:5000']
+    JWT_SECRET_KEY = os.environ.get("JWT_SECRET_KEY", "change-this-jwt-secret-in-production")
+    JWT_EXPIRY_HOURS = 24
