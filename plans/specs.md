@@ -23,12 +23,12 @@
 - [x] TypeScript Types (MonthlyBudget, User expanded) - **NEW**
 - [x] API Client Modules (auth, expenses, restaurants, budget, analytics, orders)
 - [x] API Client Modules (monthlyBudget, profile) - **NEW**
-- [ ] Pinia Stores (auth, expenses, restaurants, budget, analytics, orders)
-- [ ] Pinia Stores (monthlyBudget, profile) - **NEW**
-- [ ] Vue Router setup (guards, routes)
+- [x] Pinia Stores (auth, expenses, restaurants, budget, analytics, orders)
+- [x] Pinia Stores (monthlyBudget, profile) - **NEW**
+- [x] Vue Router setup (guards, routes)
 
 ## Phase 3: UI Views & Components
-- [ ] Login / Register
+- [x] Login / Register
 - [ ] Dashboard
 - [ ] AddExpense / AddMultiExpense / EditExpense
 - [ ] History / Analytics
