@@ -29,9 +29,9 @@
 
 ## Phase 3: UI Views & Components
 - [x] Login / Register
-- [ ] Dashboard
-- [ ] AddExpense / AddMultiExpense / EditExpense
-- [ ] History / Analytics
+- [x] Dashboard
+- [x] AddExpense / AddMultiExpense / EditExpense
+- [x] History / Analytics
 - [ ] Budget / MonthlyBudget / MonthlyBudgetSummary
 - [ ] OnlineOrders / ManageMenus / Profile
 - [ ] NotFound
