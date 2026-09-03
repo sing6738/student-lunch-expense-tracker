@@ -26,6 +26,18 @@ class User(db.Model):
         return check_password_hash(self.password_hash, password)
 
 
+class TelegramLink(db.Model):
+    """Links one private Telegram chat to one existing Lunch Expense user."""
+    __tablename__ = "telegram_links"
+
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey("user.id"), nullable=False, unique=True)
+    chat_id = db.Column(db.BigInteger, nullable=False, unique=True, index=True)
+    linked_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+
+    user = db.relationship("User", backref=db.backref("telegram_link", uselist=False, cascade="all, delete-orphan"))
+
+
 class Restaurant(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(100), unique=True, nullable=False)

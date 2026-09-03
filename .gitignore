@@ -11,3 +11,5 @@ instance/
 
 .DS_Store
 Thumbs.db
+
+scratch/

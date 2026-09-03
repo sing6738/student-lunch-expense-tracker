@@ -102,3 +102,15 @@ DATABASE_URL=postgresql://USER:PASSWORD@HOST:PORT/DATABASE
 - เปลี่ยน `SECRET_KEY` ผ่าน environment variable ก่อน deploy
 - สำหรับ production จริงควรใช้ HTTPS, secure cookie settings และ PostgreSQL
 - SQLite เหมาะกับงาน demo, prototype และระบบขนาดเล็กในเครื่อง
+
+## Telegram Bot
+
+บอทบันทึกรายจ่ายได้จากแชต Telegram โดยต้องเชื่อมกับบัญชีที่สมัครในเว็บก่อน
+
+1. คัดลอก `.env.example` เป็น `.env` (ไฟล์นี้ถูก ignore โดย Git) แล้วใส่ `TELEGRAM_BOT_TOKEN=วาง_token_จาก_BotFather_ที่นี่`
+2. ติดตั้ง dependencies: `pip install -r requirements.txt`
+3. เปิดเว็บแอปตามปกติ และเปิดบอทเป็นอีก process: `python telegram_bot.py`
+4. ในแชตส่วนตัวของบอท ส่ง `/link ชื่อผู้ใช้ รหัสผ่าน` เพื่อเชื่อมบัญชี
+5. ส่ง `ข้าวกะเพรา 55` เพื่อบันทึกรายการ หรือ `/summary` เพื่อดูยอดเดือนนี้
+
+สำหรับ Render ให้ deploy ทั้ง Web Service และ Worker จาก `render.yaml` แล้วใส่ `TELEGRAM_BOT_TOKEN` และ `DATABASE_URL` เดียวกับเว็บในหน้าตั้งค่า Environment ของ Worker. ห้าม commit token ขึ้น GitHub.
