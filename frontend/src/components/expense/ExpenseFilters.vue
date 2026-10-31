@@ -1,16 +1,17 @@
 <script setup lang="ts">
-import { useField } from 'vee-validate'
+import { ref } from 'vue'
 import { useRestaurantsStore } from '@/stores/restaurants'
 import { EXPENSE_CATEGORIES } from '@/utils/constants'
 import type { ExpenseCategory, ExpenseFilters } from '@/types/expense'
 import DatePicker from 'primevue/datepicker'
 import Select from 'primevue/select'
+import { formatDateInput } from '@/utils/date'
 
 interface Props {
   modelValue: ExpenseFilters
 }
 
-const props = defineProps<Props>()
+defineProps<Props>()
 const emit = defineEmits<{
   'update:modelValue': [filters: ExpenseFilters]
   search: [filters: ExpenseFilters]
@@ -19,15 +20,15 @@ const emit = defineEmits<{
 
 const restaurantsStore = useRestaurantsStore()
 
-const { value: dateFrom } = useField<string>('date_from')
-const { value: dateTo } = useField<string>('date_to')
-const { value: category } = useField<ExpenseCategory>('category')
-const { value: restaurantId } = useField<number>('restaurant_id')
+const dateFrom = ref<Date | null>(null)
+const dateTo = ref<Date | null>(null)
+const category = ref<ExpenseCategory | null>(null)
+const restaurantId = ref<number | null>(null)
 
 function handleSearch(): void {
   const filters: ExpenseFilters = {
-    date_from: dateFrom.value || undefined,
-    date_to: dateTo.value || undefined,
+    date_from: dateFrom.value ? formatDateInput(dateFrom.value) : undefined,
+    date_to: dateTo.value ? formatDateInput(dateTo.value) : undefined,
     category: category.value || undefined,
     restaurant_id: restaurantId.value || undefined,
     page: 1,
@@ -37,10 +38,10 @@ function handleSearch(): void {
 }
 
 function handleReset(): void {
-  dateFrom.value = ''
-  dateTo.value = ''
-  category.value = undefined
-  restaurantId.value = undefined
+  dateFrom.value = null
+  dateTo.value = null
+  category.value = null
+  restaurantId.value = null
   emit('update:modelValue', { page: 1 })
   emit('reset')
 }
@@ -54,23 +55,23 @@ function hasActiveFilters(): boolean {
   <div class="expense-filters">
     <div class="filters-row">
       <div class="filter-group">
-        <label>จากวันที่</label>
-        <DatePicker v-model="dateFrom" dateFormat="yy-mm-dd" class="p-fluid" />
+        <label class="text-xs font-medium text-stone-600">จากวันที่</label>
+        <DatePicker v-model="dateFrom" dateFormat="yy-mm-dd" class="w-full" placeholder="เลือกวันที่เริ่มต้น" />
       </div>
 
       <div class="filter-group">
-        <label>ถึงวันที่</label>
-        <DatePicker v-model="dateTo" dateFormat="yy-mm-dd" class="p-fluid" />
+        <label class="text-xs font-medium text-stone-600">ถึงวันที่</label>
+        <DatePicker v-model="dateTo" dateFormat="yy-mm-dd" class="w-full" placeholder="เลือกวันที่สิ้นสุด" />
       </div>
 
       <div class="filter-group">
-        <label>หมวดหมู่</label>
-        <Select v-model="category" :options="EXPENSE_CATEGORIES" optionLabel="label" optionValue="value" placeholder="ทั้งหมด" class="p-fluid" />
+        <label class="text-xs font-medium text-stone-600">หมวดหมู่</label>
+        <Select v-model="category" :options="EXPENSE_CATEGORIES" optionLabel="label" optionValue="value" placeholder="ทุกหมวดหมู่" class="w-full" showClear />
       </div>
 
       <div class="filter-group">
-        <label>ร้านอาหาร</label>
-        <Select v-model="restaurantId" :options="restaurantsStore.activeRestaurants" optionLabel="name" optionValue="id" placeholder="ทั้งหมด" class="p-fluid" />
+        <label class="text-xs font-medium text-stone-600">ร้านอาหาร</label>
+        <Select v-model="restaurantId" :options="restaurantsStore.activeRestaurants" optionLabel="name" optionValue="id" placeholder="ทุกร้าน" class="w-full" showClear />
       </div>
     </div>
 

@@ -26,7 +26,7 @@ const handleLogin = async () => {
   error.value = ''
   
   try {
-    const success = await authStore.login({ username: username.value, password: password.value })
+    const success = await authStore.login(username.value, password.value)
     if (success) {
       const redirect = route.query.redirect as string || '/'
       router.push(redirect)
@@ -42,33 +42,36 @@ const handleLogin = async () => {
 </script>
 
 <template>
-  <div class="flex items-center justify-center min-h-screen bg-gray-50">
-    <div class="w-full max-w-md p-6 bg-white rounded-xl shadow-md">
+  <div class="flex items-center justify-center min-h-screen bg-[#FAF8F5] p-4">
+    <div class="w-full max-w-md p-6 bg-white rounded-2xl shadow-sm border border-stone-200/80">
       <div class="text-center mb-6">
-        <h1 class="text-2xl font-bold text-primary">เข้าสู่ระบบ</h1>
-        <p class="text-gray-500 mt-2">Lunch Expense Tracker</p>
+        <div class="w-12 h-12 mx-auto mb-3 rounded-2xl bg-emerald-800 text-amber-300 flex items-center justify-center text-2xl font-bold shadow-sm">
+          🍱
+        </div>
+        <h1 class="text-2xl font-bold text-emerald-950">เข้าสู่ระบบ</h1>
+        <p class="text-stone-500 mt-1 text-sm">เพื่อนคู่ใจมื้อเที่ยงของเด็ก ม.ปลาย</p>
       </div>
-      
-      <Message v-if="error" severity="error" :closable="false" class="mb-4">{{ error }}</Message>
-      
+
+      <Message v-if="error" severity="error" class="mb-4" :closable="false">{{ error }}</Message>
+
       <form @submit.prevent="handleLogin" class="flex flex-col gap-4">
-        <div class="flex flex-col gap-2">
-          <label for="username">ชื่อผู้ใช้</label>
-          <InputText id="username" v-model="username" />
+        <div class="flex flex-col gap-1">
+          <label for="username" class="text-sm font-medium text-stone-700">ชื่อผู้ใช้</label>
+          <InputText id="username" v-model="username" class="w-full" placeholder="ใส่ชื่อผู้ใช้" />
         </div>
-        
-        <div class="flex flex-col gap-2">
-          <label for="password">รหัสผ่าน</label>
-          <Password id="password" v-model="password" :feedback="false" toggleMask />
+
+        <div class="flex flex-col gap-1">
+          <label for="password" class="text-sm font-medium text-stone-700">รหัสผ่าน</label>
+          <Password id="password" v-model="password" :feedback="false" toggleMask class="w-full" inputClass="w-full" placeholder="ใส่รหัสผ่าน" />
         </div>
-        
-        <Button type="submit" label="เข้าสู่ระบบ" :loading="loading" class="mt-4" />
+
+        <Button type="submit" label="เข้าสู่ระบบ" :loading="loading" class="w-full mt-2" style="background-color: #1B4D3E; border-color: #1B4D3E;" />
+
+        <div class="text-center mt-4 text-sm text-stone-500">
+          ยังไม่มีบัญชี? 
+          <router-link to="/register" class="text-emerald-800 font-semibold hover:underline">สมัครสมาชิก</router-link>
+        </div>
       </form>
-      
-      <div class="text-center mt-6 text-sm">
-        ยังไม่มีบัญชีใช่หรือไม่? 
-        <router-link to="/register" class="text-primary font-semibold hover:underline">สมัครสมาชิก</router-link>
-      </div>
     </div>
   </div>
 </template>

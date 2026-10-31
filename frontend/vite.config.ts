@@ -14,8 +14,8 @@ export default defineConfig({
         name: 'Lunch Expense Tracker',
         short_name: 'LunchTrack',
         description: 'ติดตามค่าอาหารกลางวันรายวัน สำหรับนักเรียนไทย',
-        theme_color: '#2E7D32',
-        background_color: '#F1F8E9',
+        theme_color: '#1B4D3E',
+        background_color: '#FAF8F5',
         display: 'standalone',
         orientation: 'portrait-primary',
         scope: '/',
@@ -74,7 +74,7 @@ export default defineConfig({
   },
   build: {
     outDir: '../static',
-    emptyOutDir: true,
+    emptyOutDir: false,
     rollupOptions: {
       output: {
         entryFileNames: `assets/[name]-[hash].js`,

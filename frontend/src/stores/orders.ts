@@ -13,7 +13,7 @@ export const useOrdersStore = defineStore('orders', () => {
     error.value = null
     try {
       const res = await ordersApi.list()
-      orders.value = res.data.data
+      orders.value = res.data.data ?? []
       return orders.value
     } catch (err: any) {
       error.value = err.response?.data?.error?.message || 'โหลดรายการสั่งซื้อไม่สำเร็จ'

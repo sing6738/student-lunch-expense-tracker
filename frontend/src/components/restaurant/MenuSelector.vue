@@ -22,7 +22,7 @@ const emit = defineEmits<{
 }>()
 
 const restaurantsStore = useRestaurantsStore()
-const { value: field, errorMessage } = useField<number>('menu_id')
+const { value: field, errorMessage } = useField<number | null>('menu_id')
 
 const menus = ref<Menu[]>([])
 const loading = ref(false)
@@ -42,7 +42,7 @@ watch(() => props.restaurantId, async (restaurantId) => {
   }
 }, { immediate: true })
 
-function handleSelect(menuId: number): void {
+function handleSelect(menuId: number | null): void {
   emit('update:modelValue', menuId)
   emit('change', menuId)
 }
@@ -55,7 +55,7 @@ function clearSelection(): void {
 
 <template>
   <div class="menu-selector">
-    <label class="p-inputwrapper">
+    <label class="p-inputwrapper w-full block">
       <Select
         v-model="field"
         :options="menus"
@@ -70,7 +70,7 @@ function clearSelection(): void {
         :loading="loading"
         @change="handleSelect($event.value)"
         @clear="clearSelection"
-        class="p-fluid"
+        class="w-full"
       >
         <template #option="{ option }">
           <div class="menu-option">
@@ -79,13 +79,17 @@ function clearSelection(): void {
           </div>
         </template>
       </Select>
-      <small v-if="errorMessage.value" class="p-error">{{ errorMessage }}</small>
+      <small v-if="errorMessage" class="p-error">{{ errorMessage }}</small>
       <small v-if="!props.restaurantId" class="p-hint">กรุณาเลือกร้านอาหารก่อน</small>
     </label>
   </div>
 </template>
 
 <style scoped>
+.menu-selector :deep(.p-dropdown),
+.menu-selector :deep(.p-select) {
+  width: 100%;
+}
 .menu-option {
   display: flex;
   justify-content: space-between;

@@ -13,25 +13,25 @@ export const useAnalyticsStore = defineStore('analytics', () => {
 
   async function fetchSummary() {
     const res = await analyticsApi.getSummary()
-    summary.value = res.data.data
+    summary.value = res.data.data ?? null
     return summary.value
   }
 
   async function fetchTrend() {
     const res = await analyticsApi.getTrend()
-    trend.value = res.data.data
+    trend.value = res.data.data ?? null
     return trend.value
   }
 
   async function fetchCategories() {
     const res = await analyticsApi.getCategories()
-    categories.value = res.data.data
+    categories.value = res.data.data ?? []
     return categories.value
   }
 
   async function fetchCalendar() {
     const res = await analyticsApi.getCalendar()
-    calendar.value = res.data.data
+    calendar.value = res.data.data ?? []
     return calendar.value
   }
 

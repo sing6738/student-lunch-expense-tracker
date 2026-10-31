@@ -13,7 +13,7 @@ export const useBudgetStore = defineStore('budget', () => {
     error.value = null
     try {
       const res = await budgetApi.getSummary()
-      summary.value = res.data.data
+      summary.value = res.data.data ?? null
       return summary.value
     } catch (err: any) {
       error.value = err.response?.data?.error?.message || 'โหลดข้อมูลงบประมาณไม่สำเร็จ'

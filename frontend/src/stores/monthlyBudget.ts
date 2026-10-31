@@ -16,7 +16,7 @@ export const useMonthlyBudgetStore = defineStore('monthlyBudget', () => {
     error.value = null
     try {
       const res = await monthlyBudgetApi.get(year, month)
-      current.value = res.data.data
+      current.value = res.data.data ?? null
       return current.value
     } catch (err: any) {
       error.value = err.response?.data?.error?.message || 'โหลดงบประมาณรายเดือนไม่สำเร็จ'
@@ -41,7 +41,7 @@ export const useMonthlyBudgetStore = defineStore('monthlyBudget', () => {
     error.value = null
     try {
       const res = await monthlyBudgetApi.getSummary(year, month)
-      summary.value = res.data.data
+      summary.value = res.data.data ?? null
       return summary.value
     } catch (err: any) {
       if (err.response?.status === 404) {

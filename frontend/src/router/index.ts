@@ -16,6 +16,8 @@ const routes = [
   { path: '/orders', name: 'onlineOrders', component: () => import('../views/OnlineOrdersView.vue') },
   { path: '/manage-menus', name: 'manageMenus', component: () => import('../views/ManageMenusView.vue') },
   { path: '/profile', name: 'profile', component: () => import('../views/ProfileView.vue') },
+  { path: '/what-to-eat', name: 'roulette', component: () => import('../views/LunchRouletteView.vue') },
+  { path: '/roulette', redirect: '/what-to-eat' },
   { path: '/:pathMatch(.*)*', name: 'notFound', component: () => import('../views/NotFoundView.vue'), meta: { public: true } }
 ]
 
@@ -24,19 +26,19 @@ const router = createRouter({
   routes
 })
 
-router.beforeEach(async (to, from, next) => {
+router.beforeEach(async (to, _from, next) => {
   const authStore = useAuthStore()
   
   // Wait for auth to initialize if needed
   if (!authStore.isAuthenticated && authStore.token) {
     try {
-        await authStore.fetchUser()
-    } catch(e) {
-        // failed to fetch user, token invalid
+      await authStore.fetchMe()
+    } catch {
+      // failed to fetch user, token invalid
     }
   }
 
-  const isPublic = to.meta.public
+  const isPublic = !!to.meta.public
   const isAuthenticated = authStore.isAuthenticated
 
   if (!isPublic && !isAuthenticated) {

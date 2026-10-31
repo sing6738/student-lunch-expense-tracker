@@ -14,7 +14,7 @@ interface Props {
   showActions?: boolean
 }
 
-const props = withDefaults(defineProps<Props>(), {
+withDefaults(defineProps<Props>(), {
   loading: false,
   emptyTitle: 'ยังไม่มีรายจ่าย',
   emptyMessage: 'เริ่มบันทึกรายจ่ายวันนี้ได้เลย',
@@ -24,7 +24,7 @@ const props = withDefaults(defineProps<Props>(), {
 
 <template>
   <div class="expense-list">
-    <LoadingSpinner v-if="loading" size="32px" />
+    <LoadingSpinner v-if="loading" :size="32" />
 
     <div v-else-if="expenses.length === 0" class="empty-container">
       <EmptyState

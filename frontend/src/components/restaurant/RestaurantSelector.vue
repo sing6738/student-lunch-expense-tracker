@@ -20,7 +20,7 @@ const emit = defineEmits<{
 }>()
 
 const restaurantsStore = useRestaurantsStore()
-const { value: field, errorMessage } = useField<number>('restaurant_id')
+const { value: field, errorMessage } = useField<number | null>('restaurant_id')
 
 const selectedRestaurant = ref<Restaurant | null>(null)
 
@@ -36,9 +36,9 @@ watch(() => props.modelValue, (val) => {
   }
 })
 
-function handleSelect(restaurant: Restaurant): void {
-  emit('update:modelValue', restaurant.id)
-  emit('change', restaurant.id)
+function handleSelect(restaurantId: number | null): void {
+  emit('update:modelValue', restaurantId)
+  emit('change', restaurantId)
 }
 
 function clearSelection(): void {
@@ -49,7 +49,7 @@ function clearSelection(): void {
 
 <template>
   <div class="restaurant-selector">
-    <label class="p-inputwrapper">
+    <label class="p-inputwrapper w-full block">
       <Select
         v-model="field"
         :options="restaurantsStore.activeRestaurants"
@@ -62,15 +62,16 @@ function clearSelection(): void {
         :showClear="!props.disabled"
         @change="handleSelect($event.value)"
         @clear="clearSelection"
-        class="p-fluid"
+        class="w-full"
       />
-      <small v-if="errorMessage.value" class="p-error">{{ errorMessage }}</small>
+      <small v-if="errorMessage" class="p-error">{{ errorMessage }}</small>
     </label>
   </div>
 </template>
 
 <style scoped>
-.restaurant-selector :deep(.p-dropdown) {
+.restaurant-selector :deep(.p-dropdown),
+.restaurant-selector :deep(.p-select) {
   width: 100%;
 }
 </style>

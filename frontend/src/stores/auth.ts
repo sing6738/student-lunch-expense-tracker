@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia'
-import { ref } from 'vue'
+import { ref, computed } from 'vue'
 import { authApi } from '@/api/auth'
 import type { User } from '@/types/auth'
 
@@ -9,7 +9,7 @@ export const useAuthStore = defineStore('auth', () => {
   const loading = ref(false)
   const error = ref<string | null>(null)
 
-  const isAuthenticated = () => !!token.value
+  const isAuthenticated = computed(() => !!token.value)
 
   function setAuth(newUser: User, newToken: string) {
     user.value = newUser
@@ -23,9 +23,11 @@ export const useAuthStore = defineStore('auth', () => {
     localStorage.removeItem('token')
   }
 
-  async function login(username: string, password: string) {
+  async function login(usernameOrPayload: string | { username: string; password: string }, passwordParam?: string) {
     loading.value = true
     error.value = null
+    const username = typeof usernameOrPayload === 'object' ? usernameOrPayload.username : usernameOrPayload
+    const password = typeof usernameOrPayload === 'object' ? usernameOrPayload.password : (passwordParam || '')
     try {
       const res = await authApi.login({ username, password })
       if (res.data.success && res.data.data) {
@@ -92,6 +94,8 @@ export const useAuthStore = defineStore('auth', () => {
     }
   }
 
+  const fetchUser = fetchMe
+
   return {
     user,
     token,
@@ -103,6 +107,7 @@ export const useAuthStore = defineStore('auth', () => {
     login,
     register,
     logout,
-    fetchMe
+    fetchMe,
+    fetchUser
   }
 })

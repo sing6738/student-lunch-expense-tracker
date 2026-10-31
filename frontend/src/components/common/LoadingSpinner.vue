@@ -5,14 +5,14 @@ interface Props {
   size?: number;
 }
 
-const props = withDefaults(defineProps<Props>(), {
+withDefaults(defineProps<Props>(), {
   size: 50
 })
 </script>
 
 <template>
   <div class="loading-container">
-    <ProgressSpinner :style="{ width: size + 'px', height: size + 'px' }" strokeWidth="4" />
+    <ProgressSpinner :style="{ width: size + 'px', height: size + 'px' }" :strokeWidth="4" />
   </div>
 </template>
 

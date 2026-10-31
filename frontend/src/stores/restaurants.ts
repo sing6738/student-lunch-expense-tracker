@@ -18,7 +18,7 @@ export const useRestaurantsStore = defineStore('restaurants', () => {
     error.value = null
     try {
       const res = await restaurantsApi.list()
-      restaurants.value = res.data.data
+      restaurants.value = res.data.data ?? []
       return restaurants.value
     } catch (err: any) {
       error.value = err.response?.data?.error?.message || 'โหลดรายชื่อร้านไม่สำเร็จ'
@@ -33,8 +33,9 @@ export const useRestaurantsStore = defineStore('restaurants', () => {
       return menusByRestaurant.value[restaurantId]
     }
     const res = await restaurantsApi.getMenus(restaurantId)
-    menusByRestaurant.value[restaurantId] = res.data.data
-    return res.data.data
+    const data = res.data.data ?? []
+    menusByRestaurant.value[restaurantId] = data
+    return data
   }
 
   return {

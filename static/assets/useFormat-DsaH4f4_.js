@@ -1,0 +1,1 @@
+import{a as e,i as t,n,r,t as i}from"./date-DoIr_T9F.js";function a(){return{formatTHB:e,formatNumberTH:t,formatDateTH:r,formatDateShortTH:n,formatDateInput:i}}export{a as t};
