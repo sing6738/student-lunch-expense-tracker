@@ -26,26 +26,76 @@ const initialData = computed(() => {
 
 // Success state modal/view
 const showSuccessModal = ref(false)
-const savedRecord = ref<{ amount: number; isOffline: boolean } | null>(null)
+const savedRecord = ref<{
+  amount: number
+  isOffline: boolean
+  remainingBudget: number
+} | null>(null)
 const isSubmitting = ref(false)
 
 const handleSubmit = async (data: any) => {
   isSubmitting.value = true
   try {
     const status = await expensesStore.addExpense(data)
-    await budgetStore.fetchBudgetSummary()
     
-    savedRecord.value = {
-      amount: data.amount,
-      isOffline: status === 'offline'
-    }
-    showSuccessModal.value = true
+    // Calculate projected remaining budget locally first
+    const currentRemaining = budgetStore.summary?.remaining_today ?? (budgetStore.summary?.daily_budget ?? 0)
+    let finalRemaining = currentRemaining - Number(data.amount)
 
     if (status === 'offline') {
-      toast.add({ severity: 'info', summary: 'โหมดออฟไลน์', detail: 'บันทึกรายการลงในเครื่องแล้ว และจะซิงค์ให้อัตโนมัติเมื่อต่อเน็ต', life: 3000 })
+      // Offline-queued: Do NOT trigger network request fetchBudgetSummary()!
+      // Update local store summary optimistically so UI remains consistent
+      if (budgetStore.summary) {
+        budgetStore.summary.spent_today += Number(data.amount)
+        budgetStore.summary.remaining_today = finalRemaining
+        budgetStore.summary.is_over_budget = finalRemaining < 0
+      }
+      
+      savedRecord.value = {
+        amount: Number(data.amount),
+        isOffline: true,
+        remainingBudget: finalRemaining
+      }
+      showSuccessModal.value = true
+
+      toast.add({
+        severity: 'info',
+        summary: 'บันทึกในคิวออฟไลน์แล้ว',
+        detail: 'บันทึกรายการลงเครื่องแล้ว ข้อมูลจะซิงค์อัตโนมัติเมื่อต่ออินเทอร์เน็ต',
+        life: 4000
+      })
+    } else {
+      // Online: attempt to refresh budget summary, falling back to local calculation if network blips
+      try {
+        await budgetStore.fetchBudgetSummary()
+        if (budgetStore.summary) {
+          finalRemaining = budgetStore.summary.remaining_today
+        }
+      } catch {
+        // network blip after save; keep projected remaining
+      }
+
+      savedRecord.value = {
+        amount: Number(data.amount),
+        isOffline: false,
+        remainingBudget: finalRemaining
+      }
+      showSuccessModal.value = true
+
+      toast.add({
+        severity: 'success',
+        summary: 'สำเร็จ',
+        detail: 'บันทึกรายจ่ายเรียบร้อยแล้ว',
+        life: 3000
+      })
     }
   } catch (err: any) {
-    toast.add({ severity: 'error', summary: 'บันทึกไม่สำเร็จ', detail: expensesStore.error || err.message, life: 3000 })
+    toast.add({
+      severity: 'error',
+      summary: 'บันทึกไม่สำเร็จ',
+      detail: expensesStore.error || err.message,
+      life: 3000
+    })
   } finally {
     isSubmitting.value = false
   }
@@ -68,13 +118,21 @@ function handleBackHome() {
     <!-- Success Modal Overlay -->
     <div v-if="showSuccessModal" class="success-overlay" role="dialog" aria-modal="true" aria-labelledby="success-title">
       <div class="success-card">
-        <div class="success-icon-wrap">
-          <span class="success-emoji">🎉</span>
+        <div class="success-icon-wrap" :class="{ 'offline-icon-wrap': savedRecord?.isOffline }">
+          <span class="success-emoji">{{ savedRecord?.isOffline ? '📦' : '🎉' }}</span>
         </div>
         
-        <h2 id="success-title" class="success-title">บันทึกเรียบร้อย!</h2>
-        <p class="success-sub">
-          {{ savedRecord?.isOffline ? 'บันทึกในเครื่องแล้ว (รอซิงค์เมื่อออนไลน์)' : 'ข้อมูลมื้อเที่ยงถูกบันทึกเข้าระบบแล้ว' }}
+        <h2 id="success-title" class="success-title">
+          {{ savedRecord?.isOffline ? 'บันทึกรายการลงคิวแล้ว' : 'บันทึกเรียบร้อย!' }}
+        </h2>
+        
+        <!-- Offline sync status indicator badge -->
+        <div v-if="savedRecord?.isOffline" class="offline-sync-tag">
+          <span class="sync-dot"></span>
+          <span>รอซิงค์อัตโนมัติเมื่อออนไลน์</span>
+        </div>
+        <p v-else class="success-sub">
+          ข้อมูลมื้อเที่ยงถูกบันทึกเข้าระบบเรียบร้อยแล้ว
         </p>
 
         <!-- Summary Figures -->
@@ -84,9 +142,14 @@ function handleBackHome() {
             <span class="value font-bold text-main">{{ formatTHB(savedRecord?.amount || 0) }}</span>
           </div>
           <div class="summary-line">
-            <span class="label">งบคงเหลือวันนี้:</span>
-            <span class="value font-bold" :class="(budgetStore.summary?.remaining_today || 0) < 0 ? 'text-coral' : 'text-primary'">
-              {{ formatTHB(budgetStore.summary?.remaining_today || 0) }}
+            <span class="label">
+              {{ savedRecord?.isOffline ? 'งบคงเหลือคาดการณ์:' : 'งบคงเหลือวันนี้:' }}
+            </span>
+            <span 
+              class="value font-bold" 
+              :class="(savedRecord?.remainingBudget || 0) < 0 ? 'text-coral' : 'text-primary'"
+            >
+              {{ formatTHB(savedRecord?.remainingBudget || 0) }}
             </span>
           </div>
         </div>
@@ -214,7 +277,11 @@ function handleBackHome() {
   display: flex;
   align-items: center;
   justify-content: center;
-  margin: 0 auto 1rem;
+  margin: 0 auto 0.75rem;
+}
+
+.offline-icon-wrap {
+  background: var(--mango-light);
 }
 
 .success-emoji {
@@ -232,6 +299,28 @@ function handleBackHome() {
   font-size: 0.8rem;
   color: var(--text-muted);
   margin: 0 0 1.25rem;
+}
+
+.offline-sync-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  background: #FEF3C7;
+  color: #B45309;
+  border: 1px solid #FDE68A;
+  padding: 0.25rem 0.65rem;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  margin: 0 auto 1.25rem;
+}
+
+.sync-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background-color: #F59E0B;
+  box-shadow: 0 0 0 2px rgba(245, 158, 11, 0.2);
 }
 
 .success-summary-box {

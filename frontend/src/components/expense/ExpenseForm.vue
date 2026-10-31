@@ -36,20 +36,38 @@ const category = ref<ExpenseCategory>(props.initialData?.category || 'rice')
 const date = ref<string>(props.initialData?.date ? formatDateInput(props.initialData.date) : formatDateInput(new Date()))
 const note = ref<string>(props.initialData?.note || '')
 
-// Search filters
+// Search filters & loading states
 const restaurantSearch = ref('')
 const menuSearch = ref('')
 const menus = ref<Menu[]>([])
 const loadingMenus = ref(false)
+const restaurantsLoadError = ref<string | null>(null)
+const retryingInitial = ref(false)
 
-onMounted(async () => {
-  await Promise.allSettled([
-    restaurantsStore.fetchRestaurants(),
-    budgetStore.fetchBudgetSummary()
-  ])
+async function loadInitialData() {
+  retryingInitial.value = true
+  restaurantsLoadError.value = null
+  try {
+    const results = await Promise.allSettled([
+      restaurantsStore.fetchRestaurants(),
+      budgetStore.fetchBudgetSummary()
+    ])
+    if (results[0].status === 'rejected') {
+      restaurantsLoadError.value = 'ไม่สามารถเชื่อมต่อรายชื่อร้านค้าได้ กรุณาตรวจสอบสัญญาณเน็ตแล้วลองใหม่'
+    }
+  } catch {
+    restaurantsLoadError.value = 'เกิดข้อผิดพลาดในการโหลดข้อมูลร้านค้า'
+  } finally {
+    retryingInitial.value = false
+  }
+
   if (restaurantId.value) {
     loadMenusForRestaurant(restaurantId.value)
   }
+}
+
+onMounted(() => {
+  loadInitialData()
 })
 
 // Filtered restaurants
@@ -85,6 +103,8 @@ async function loadMenusForRestaurant(id: number) {
     if (menuId.value && !list.find(m => m.id === menuId.value)) {
       menuId.value = null
     }
+  } catch {
+    menus.value = []
   } finally {
     loadingMenus.value = false
   }
@@ -173,32 +193,51 @@ function handleSubmit() {
         </span>
       </div>
 
-      <!-- Restaurant search or quick chips -->
-      <div class="search-input-wrap">
-        <i class="pi pi-search search-icon"></i>
-        <input 
-          v-model="restaurantSearch" 
-          type="text" 
-          placeholder="ค้นหาร้านอาหารในโรงเรียน..." 
-          class="custom-search-input"
-        />
-        <button v-if="restaurantSearch" type="button" class="clear-btn" @click="restaurantSearch = ''">✕</button>
-      </div>
-
-      <div class="chips-container" role="radiogroup" aria-label="รายชื่อร้านอาหาร">
-        <button
-          v-for="r in filteredRestaurants"
-          :key="r.id"
-          type="button"
-          class="chip-item"
-          :class="{ 'chip-selected': restaurantId === r.id }"
-          @click="handleSelectRestaurant(r)"
-          :aria-checked="restaurantId === r.id"
+      <!-- Localized Error State with Retry for Restaurant Load -->
+      <div v-if="restaurantsLoadError" class="load-error-banner">
+        <i class="pi pi-exclamation-triangle text-coral"></i>
+        <div class="flex-1">
+          <span class="text-xs font-semibold text-coral block">{{ restaurantsLoadError }}</span>
+        </div>
+        <button 
+          type="button" 
+          class="retry-inline-btn" 
+          :disabled="retryingInitial"
+          @click="loadInitialData"
         >
-          <span class="chip-icon">🏬</span>
-          <span class="chip-text">{{ r.name }}</span>
+          <i v-if="retryingInitial" class="pi pi-spin pi-spinner"></i>
+          <span v-else>ลองใหม่</span>
         </button>
       </div>
+
+      <!-- Restaurant search or quick chips -->
+      <template v-else>
+        <div class="search-input-wrap">
+          <i class="pi pi-search search-icon"></i>
+          <input 
+            v-model="restaurantSearch" 
+            type="text" 
+            placeholder="ค้นหาร้านอาหารในโรงเรียน..." 
+            class="custom-search-input"
+          />
+          <button v-if="restaurantSearch" type="button" class="clear-btn" @click="restaurantSearch = ''">✕</button>
+        </div>
+
+        <div class="chips-container" role="radiogroup" aria-label="รายชื่อร้านอาหาร">
+          <button
+            v-for="r in filteredRestaurants"
+            :key="r.id"
+            type="button"
+            class="chip-item"
+            :class="{ 'chip-selected': restaurantId === r.id }"
+            @click="handleSelectRestaurant(r)"
+            :aria-checked="restaurantId === r.id"
+          >
+            <span class="chip-icon">🏬</span>
+            <span class="chip-text">{{ r.name }}</span>
+          </button>
+        </div>
+      </template>
       <small v-if="formErrors.restaurant" class="p-error">{{ formErrors.restaurant }}</small>
     </section>
 
@@ -433,6 +472,33 @@ function handleSubmit() {
   background: var(--primary-light);
   padding: 0.2rem 0.6rem;
   border-radius: var(--border-radius-full);
+}
+
+/* Load error banner */
+.load-error-banner {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  background: var(--warning-coral-light);
+  border: 1px solid #FECACA;
+  padding: 0.65rem 0.85rem;
+  border-radius: var(--border-radius-sm);
+}
+
+.retry-inline-btn {
+  background: #ffffff;
+  border: 1px solid #F87171;
+  color: var(--warning-coral);
+  border-radius: var(--border-radius-sm);
+  padding: 0.25rem 0.6rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: inherit;
+  min-height: 32px;
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
 }
 
 /* Search bar */

@@ -1,1 +1,0 @@
-import{E as e,u as t}from"./runtime-core.esm-bundler-CTn1umrH.js";import{i as n}from"./index-DqDHLaFc.js";var r={};function i(n,r){return e(),t(`div`,null,`Analytics`)}var a=n(r,[[`render`,i]]);export{a as default};

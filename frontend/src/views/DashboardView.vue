@@ -16,8 +16,14 @@ const expensesStore = useExpensesStore()
 const analyticsStore = useAnalyticsStore()
 
 const loading = ref(true)
-const loadError = ref<string | null>(null)
+const budgetFailed = ref(false)
+const expensesFailed = ref(false)
+const analyticsFailed = ref(false)
 const settingBudget = ref(false)
+
+// Retrying individual sections
+const retryingBudget = ref(false)
+const retryingExpenses = ref(false)
 
 // Current date & greeting
 const todayDateStr = computed(() => formatDateTH(new Date()))
@@ -33,18 +39,51 @@ const greeting = computed(() => {
 
 async function loadDashboardData() {
   loading.value = true
-  loadError.value = null
+  budgetFailed.value = false
+  expensesFailed.value = false
+  analyticsFailed.value = false
+
+  const results = await Promise.allSettled([
+    budgetStore.fetchBudgetSummary(),
+    expensesStore.fetchExpenses({ per_page: 6 }),
+    analyticsStore.fetchSummary(),
+    expensesStore.refreshOfflineQueueCount()
+  ])
+
+  if (results[0].status === 'rejected') {
+    budgetFailed.value = true
+  }
+  if (results[1].status === 'rejected') {
+    expensesFailed.value = true
+  }
+  if (results[2].status === 'rejected') {
+    analyticsFailed.value = true
+  }
+
+  loading.value = false
+}
+
+async function retryBudget() {
+  retryingBudget.value = true
   try {
-    await Promise.allSettled([
-      budgetStore.fetchBudgetSummary(),
-      expensesStore.fetchExpenses({ per_page: 6 }),
-      analyticsStore.fetchSummary(),
-      expensesStore.refreshOfflineQueueCount()
-    ])
-  } catch (err: any) {
-    loadError.value = err.message || 'ไม่สามารถโหลดข้อมูลได้ กรุณาลองใหม่อีกครั้ง'
+    await budgetStore.fetchBudgetSummary()
+    budgetFailed.value = false
+  } catch {
+    budgetFailed.value = true
   } finally {
-    loading.value = false
+    retryingBudget.value = false
+  }
+}
+
+async function retryExpenses() {
+  retryingExpenses.value = true
+  try {
+    await expensesStore.fetchExpenses({ per_page: 6 })
+    expensesFailed.value = false
+  } catch {
+    expensesFailed.value = true
+  } finally {
+    retryingExpenses.value = false
   }
 }
 
@@ -111,6 +150,7 @@ async function handleQuickSetBudget(amount: number) {
   try {
     await budgetStore.updateBudget(amount)
     await budgetStore.fetchBudgetSummary()
+    budgetFailed.value = false
   } catch (err: any) {
     // handled in store
   } finally {
@@ -170,14 +210,14 @@ function quickAdd(item: { restaurantId: number; menuId: number; price: number; c
       </div>
     </section>
 
-    <!-- Error State with Retry -->
-    <div v-if="loadError" class="state-card error-card">
-      <i class="pi pi-exclamation-triangle text-coral"></i>
-      <div class="state-text">
-        <p class="font-bold text-coral">เกิดข้อผิดพลาดในการโหลดข้อมูล</p>
-        <p class="text-xs text-muted">{{ loadError }}</p>
+    <!-- Global Network Failure when all critical calls fail -->
+    <div v-if="budgetFailed && expensesFailed" class="state-card error-card">
+      <i class="pi pi-wifi text-coral text-xl"></i>
+      <div class="state-text flex-1">
+        <p class="font-bold text-coral">ไม่สามารถเชื่อมต่อข้อมูลได้</p>
+        <p class="text-xs text-muted">เครือข่ายขัดข้อง กรุณาตรวจสอบสัญญาณเน็ตแล้วลองใหม่</p>
       </div>
-      <Button label="ลองใหม่อีกครั้ง" icon="pi pi-refresh" size="small" class="p-button-outlined" @click="loadDashboardData" />
+      <Button label="โหลดใหม่ทั้งหมด" icon="pi pi-refresh" size="small" class="p-button-outlined" @click="loadDashboardData" />
     </div>
 
     <!-- Skeleton Loading State -->
@@ -192,7 +232,25 @@ function quickAdd(item: { restaurantId: number; menuId: number; price: number; c
 
     <template v-else>
       <!-- PRIMARY TODAY BUDGET CARD -->
-      <section class="today-budget-card" :class="{ 'is-over': isOverBudget, 'is-near': isNearLimit }">
+      <section v-if="budgetFailed && !budgetStore.summary" class="today-budget-card localized-error-card">
+        <div class="flex items-center gap-3">
+          <i class="pi pi-exclamation-circle text-coral text-2xl"></i>
+          <div class="flex-1">
+            <h3 class="font-bold text-main m-0">ไม่สามารถโหลดข้อมูลงบประมาณได้</h3>
+            <p class="text-xs text-muted m-0 mt-1">สัญญาณขัดข้อง ไม่สามารถดึงงบคงเหลือวันนี้ได้</p>
+          </div>
+          <Button 
+            label="ลองใหม่" 
+            icon="pi pi-refresh" 
+            size="small" 
+            :loading="retryingBudget" 
+            class="p-button-outlined"
+            @click="retryBudget" 
+          />
+        </div>
+      </section>
+
+      <section v-else class="today-budget-card" :class="{ 'is-over': isOverBudget, 'is-near': isNearLimit }">
         <div class="card-header-bar">
           <span class="card-label">
             <span class="pulse-dot" :class="isOverBudget ? 'dot-red' : (isNearLimit ? 'dot-yellow' : 'dot-green')"></span>
@@ -337,14 +395,31 @@ function quickAdd(item: { restaurantId: number; menuId: number; price: number; c
             <span class="section-badge-icon">🕒</span>
             <h2 class="section-title">รายการล่าสุด</h2>
           </div>
-          <router-link to="/history" class="see-all-link">
+          <router-link v-if="expensesStore.expenses.length > 0" to="/history" class="see-all-link">
             ดูทั้งหมด
             <i class="pi pi-angle-right"></i>
           </router-link>
         </div>
 
-        <!-- Empty State for first-time user -->
-        <div v-if="expensesStore.expenses.length === 0" class="empty-expense-box">
+        <!-- 1. Localized Error State for Expenses (Distinguished from empty state) -->
+        <div v-if="expensesFailed && expensesStore.expenses.length === 0" class="state-card error-card">
+          <i class="pi pi-exclamation-triangle text-coral"></i>
+          <div class="state-text flex-1">
+            <p class="font-bold text-coral m-0">ไม่สามารถโหลดรายการล่าสุดได้</p>
+            <p class="text-xs text-muted m-0 mt-0.5">เกิดข้อผิดพลาดในการดึงข้อมูลจากเซิร์ฟเวอร์</p>
+          </div>
+          <Button 
+            label="ลองใหม่" 
+            icon="pi pi-refresh" 
+            size="small" 
+            :loading="retryingExpenses" 
+            class="p-button-outlined" 
+            @click="retryExpenses" 
+          />
+        </div>
+
+        <!-- 2. Genuine Empty State (Only when request succeeded and items are 0) -->
+        <div v-else-if="expensesStore.expenses.length === 0" class="empty-expense-box">
           <div class="empty-icon-circle">🍱</div>
           <h3 class="empty-heading">ยังไม่มีบันทึกมื้อเที่ยงวันนี้</h3>
           <p class="empty-sub">เพิ่งซื้อข้าวเที่ยงมาใช่ไหม? กดปุ่มบันทึกด้านบนได้เลย</p>
@@ -354,7 +429,7 @@ function quickAdd(item: { restaurantId: number; menuId: number; price: number; c
           </router-link>
         </div>
 
-        <!-- Compact Expenses List -->
+        <!-- 3. Compact Expenses List -->
         <div v-else class="expenses-compact-list">
           <div 
             v-for="exp in expensesStore.expenses" 
@@ -381,7 +456,7 @@ function quickAdd(item: { restaurantId: number; menuId: number; price: number; c
       </section>
 
       <!-- SECONDARY MONTHLY SUMMARY (Subtle pill, below the fold) -->
-      <section v-if="analyticsStore.summary" class="secondary-monthly-pill">
+      <section v-if="analyticsStore.summary && !analyticsFailed" class="secondary-monthly-pill">
         <div class="pill-left">
           <i class="pi pi-chart-pie text-muted"></i>
           <span class="pill-label">ยอดสะสมเดือนนี้</span>
@@ -436,6 +511,11 @@ function quickAdd(item: { restaurantId: number; menuId: number; price: number; c
   box-shadow: 0 4px 16px rgba(27, 77, 62, 0.06);
   position: relative;
   transition: all 0.2s ease;
+}
+
+.localized-error-card {
+  border-color: rgba(220, 38, 38, 0.4);
+  background: #FFF5F5;
 }
 
 .today-budget-card.is-over {

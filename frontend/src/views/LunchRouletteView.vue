@@ -63,13 +63,24 @@ async function loadRouletteData() {
   loading.value = true
   loadError.value = null
   try {
-    await Promise.allSettled([
+    const results = await Promise.allSettled([
       restaurantsStore.fetchRestaurants(),
       budgetStore.fetchBudgetSummary(),
       expensesStore.fetchExpenses({ per_page: 15 })
     ])
 
+    // If fetching restaurants failed, do NOT treat this as "no menus"!
+    if (results[0].status === 'rejected') {
+      loadError.value = 'ไม่สามารถเชื่อมต่อรายชื่อร้านค้าได้ กรุณาตรวจสอบสัญญาณเน็ตแล้วลองใหม่'
+      return
+    }
+
     const activeRestaurants = restaurantsStore.activeRestaurants
+    if (activeRestaurants.length === 0) {
+      allMenus.value = []
+      return
+    }
+
     const menuPromises = activeRestaurants.map(async (r) => {
       const list = await restaurantsStore.fetchMenus(r.id)
       return list.map(m => ({
@@ -78,8 +89,18 @@ async function loadRouletteData() {
       }))
     })
 
-    const results = await Promise.all(menuPromises)
-    allMenus.value = results.flat().filter(m => m.is_active && m.price > 0)
+    const menuResults = await Promise.allSettled(menuPromises)
+    const fulfilledMenus = menuResults
+      .filter((r): r is PromiseFulfilledResult<EnrichedMenu[]> => r.status === 'fulfilled')
+      .flatMap(r => r.value)
+
+    // If all menu fetches failed, it's a network error, not genuine empty state
+    if (fulfilledMenus.length === 0 && menuResults.some(r => r.status === 'rejected')) {
+      loadError.value = 'เกิดข้อผิดพลาดในการโหลดรายการเมนูอาหาร กรุณาลองใหม่อีกครั้ง'
+      return
+    }
+
+    allMenus.value = fulfilledMenus.filter(m => m.is_active && m.price > 0)
 
     // Default budget ceiling to remaining daily budget if available and positive
     const remaining = budgetStore.summary?.remaining_today
@@ -274,23 +295,23 @@ function getCategoryIcon(name: string) {
       </div>
     </div>
 
-    <!-- Error State with Retry -->
+    <!-- 1. Localized Retryable Error State (Distinguished from empty menus) -->
     <div v-if="loadError" class="state-banner error-banner">
-      <i class="pi pi-exclamation-triangle"></i>
+      <i class="pi pi-exclamation-triangle text-coral text-xl"></i>
       <div class="flex-1">
-        <p class="font-bold text-coral">ไม่สามารถโหลดข้อมูลร้านค้าได้</p>
-        <p class="text-xs text-muted">{{ loadError }}</p>
+        <p class="font-bold text-coral m-0">ไม่สามารถโหลดข้อมูลเมนูอาหารได้</p>
+        <p class="text-xs text-muted m-0 mt-0.5">{{ loadError }}</p>
       </div>
-      <Button label="ลองใหม่" size="small" class="p-button-outlined" @click="loadRouletteData" />
+      <Button label="ลองใหม่อีกครั้ง" icon="pi pi-refresh" size="small" class="p-button-outlined" @click="loadRouletteData" />
     </div>
 
-    <!-- Loading State -->
+    <!-- 2. Loading State -->
     <div v-else-if="loading" class="loading-state">
       <i class="pi pi-spin pi-spinner text-3xl text-primary"></i>
       <p class="mt-3 text-muted">กำลังเตรียมเมนูอาหารในโรงเรียน...</p>
     </div>
 
-    <!-- Empty State: No restaurants or menus configured in app -->
+    <!-- 3. Genuine Empty State: No restaurants or menus in database -->
     <div v-else-if="allMenus.length === 0" class="empty-state-card">
       <div class="empty-emoji">🍽️</div>
       <h2 class="empty-title">ยังไม่มีเมนูในระบบ</h2>
@@ -303,7 +324,7 @@ function getCategoryIcon(name: string) {
       </router-link>
     </div>
 
-    <!-- Main Roulette Content -->
+    <!-- 4. Main Roulette Content (When menus exist) -->
     <template v-else>
       <!-- FILTER PANEL -->
       <section class="filter-panel" aria-label="ตัวกรองการสุ่มเมนู">
