@@ -5,6 +5,7 @@ from datetime import date, datetime, timedelta
 from functools import wraps, lru_cache
 from flask import (
     Flask,
+    Blueprint,
     Response,
     abort,
     flash,
@@ -91,7 +92,17 @@ def create_app():
 
     register_template_filters(app)
     register_error_handlers(app)
-    register_routes(app)
+
+    # Legacy routes available under /legacy/...
+    def legacy_url_build_error_handler(error, endpoint, values):
+        if not endpoint.startswith("legacy.") and f"legacy.{endpoint}" in app.view_functions:
+            return url_for(f"legacy.{endpoint}", **values)
+        return None
+    app.url_build_error_handlers.append(legacy_url_build_error_handler)
+
+    legacy_bp = Blueprint("legacy", __name__, url_prefix="/legacy")
+    register_routes(legacy_bp)
+    app.register_blueprint(legacy_bp)
     
     from api import api_bp
     csrf.exempt(api_bp)
@@ -99,6 +110,9 @@ def create_app():
 
     @app.after_request
     def set_security_headers(response):
+        if request.path == '/sw.js':
+            response.headers['Service-Worker-Allowed'] = '/'
+
         # บังคับใช้ HTTPS เป็นเวลา 1 ปี + รวม subdomains (เฉพาะใน production/ไม่ใช่ debug)
         if not app.debug:
             response.headers['Strict-Transport-Security'] = (
@@ -133,7 +147,7 @@ def create_app():
     @app.route('/', defaults={'path': ''})
     @app.route('/<path:path>')
     def serve_spa(path):
-        if path.startswith('api/'):
+        if path.startswith('api/') or path.startswith('legacy'):
             abort(404)
         if path and os.path.exists(os.path.join(app.static_folder, path)):
             return send_from_directory(app.static_folder, path)

@@ -1,0 +1,1 @@
+import{E as e,u as t}from"./runtime-core.esm-bundler-CTn1umrH.js";import{i as n}from"./index-Bfgtg-p_.js";var r={};function i(n,r){return e(),t(`div`,null,`Budget`)}var a=n(r,[[`render`,i]]);export{a as default};

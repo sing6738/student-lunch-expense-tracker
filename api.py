@@ -170,14 +170,16 @@ def get_budget(current_user):
         Expense.user_id == current_user.id,
         Expense.expense_date == today
     ).scalar() or 0.0
-    
+
+    daily_budget = current_user.daily_budget or 0.0
+
     return jsonify({
         "success": True,
         "data": {
             "daily_budget": current_user.daily_budget,
             "spent_today": float(spent_today),
-            "remaining_today": float(current_user.daily_budget - spent_today),
-            "is_over_budget": float(spent_today) > current_user.daily_budget
+            "remaining_today": float(daily_budget - spent_today),
+            "is_over_budget": float(spent_today) > daily_budget
         }
     })
 
