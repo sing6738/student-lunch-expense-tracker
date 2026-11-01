@@ -1,4 +1,5 @@
 import csv
+import os
 import io
 from datetime import date, datetime, timedelta
 from functools import wraps, lru_cache
@@ -71,6 +72,13 @@ def create_app():
     app = Flask(__name__, static_folder="static")
     app.config.from_object(Config)
     app.config['SEND_FILE_MAX_AGE_DEFAULT'] = 31536000
+
+    db_url = os.environ.get("DATABASE_URL", "sqlite:///app.db")
+    if db_url.startswith("postgres://"):
+        db_url = db_url.replace("postgres://", "postgresql+psycopg://", 1)
+    elif db_url.startswith("postgresql://"):
+        db_url = db_url.replace("postgresql://", "postgresql+psycopg://", 1)
+    app.config["SQLALCHEMY_DATABASE_URI"] = db_url
     db.init_app(app)
     csrf.init_app(app)
     
@@ -104,7 +112,7 @@ def create_app():
             "style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://fonts.googleapis.com; "
             "font-src 'self' data: https://cdn.jsdelivr.net https://fonts.gstatic.com; "
             "img-src 'self' data:; "
-            "connect-src 'self' http://localhost:5173 http://127.0.0.1:5173 ws://localhost:5173 ws://127.0.0.1:5173"
+            "connect-src 'self' https: http: ws: wss:"
         )
 
         # ป้องกัน Clickjacking
@@ -121,7 +129,7 @@ def create_app():
 
         return response
 
-    import os
+
     @app.route('/', defaults={'path': ''})
     @app.route('/<path:path>')
     def serve_spa(path):
