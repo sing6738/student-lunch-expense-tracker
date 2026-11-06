@@ -2,52 +2,102 @@
 <html lang="th">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>{% block title %}Lunch Budget{% endblock %}</title>
-  
+
   <link rel="preconnect" href="https://cdn.jsdelivr.net">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Sarabun:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-  
-  <link rel="preload" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" as="style">
+
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
   <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🍱</text></svg>">
   <link href="{{ url_for('static', filename='css/style.css') }}" rel="stylesheet">
 </head>
 <body>
-  <div class="liquid-bg">
-    <div class="blob"></div>
-    <div class="blob"></div>
-    <div class="blob"></div>
-    <div class="blob"></div>
-    <div class="blob"></div>
-  </div>
-
-  <!-- Toast Container -->
-  <div class="toast-container" id="toastContainer" aria-live="polite" aria-atomic="true"></div>
-
   {% if current_user %}
   <div class="app-shell">
-    <main class="main-panel">
-      <nav class="topbar navbar navbar-expand-lg">
-        <div class="container-fluid px-0">
-          <button class="btn btn-glass-trigger" type="button" data-bs-toggle="offcanvas" data-bs-target="#mainMenu" aria-label="เปิดเมนู">
-            <i class="bi bi-list"></i>
-          </button>
-          <a class="brand-topbar ms-3 d-none d-sm-flex" href="{{ url_for('dashboard') }}">
-            <span class="brand-mark-sm"><i class="bi bi-wallet2"></i></span>
-            <span>Lunch Budget</span>
-          </a>
-          <a class="ms-auto me-3 text-end d-none d-md-block text-decoration-none" href="{{ url_for('profile') }}" style="color: var(--text-primary);">
-            <div class="text-muted small">สวัสดี</div>
-            <strong><i class="bi bi-person-circle"></i> {{ current_user.username }}</strong>
-          </a>
-          <a class="btn btn-outline-danger btn-sm" href="{{ url_for('logout') }}"><i class="bi bi-box-arrow-right"></i> ออกจากระบบ</a>
-        </div>
+    <!-- Desktop Sidebar -->
+    <aside class="sidebar d-none d-lg-block" aria-label="เมนูหลัก">
+      <a class="brand" href="{{ url_for('dashboard') }}">
+        <i class="bi bi-wallet2"></i>
+        <span>Lunch Budget</span>
+      </a>
+      <nav class="nav" aria-label="เมนูหลัก">
+        <a class="nav-link {% if request.endpoint == 'dashboard' %}active{% endif %}"
+           href="{{ url_for('dashboard') }}"
+           {% if request.endpoint == 'dashboard' %}aria-current="page"{% endif %}>
+          <i class="bi bi-grid-1x2"></i>
+          <span>ภาพรวม</span>
+        </a>
+        <a class="nav-link {% if request.endpoint == 'add_expense' %}active{% endif %}"
+           href="{{ url_for('add_expense') }}"
+           {% if request.endpoint == 'add_expense' %}aria-current="page"{% endif %}>
+          <i class="bi bi-plus-circle"></i>
+          <span>เพิ่มรายการ</span>
+        </a>
+        <a class="nav-link {% if request.endpoint == 'add_multi_expenses' %}active{% endif %}"
+           href="{{ url_for('add_multi_expenses') }}"
+           {% if request.endpoint == 'add_multi_expenses' %}aria-current="page"{% endif %}>
+          <i class="bi bi-ui-radios"></i>
+          <span>เพิ่มหลายรายการ</span>
+        </a>
+        <a class="nav-link {% if request.endpoint == 'history' %}active{% endif %}"
+           href="{{ url_for('history') }}"
+           {% if request.endpoint == 'history' %}aria-current="page"{% endif %}>
+          <i class="bi bi-clock-history"></i>
+          <span>ประวัติ</span>
+        </a>
+        <div class="divider my-3"></div>
+        <a class="nav-link {% if request.endpoint in ['monthly_budget', 'monthly_budget_summary'] %}active{% endif %}"
+           href="{{ url_for('monthly_budget') }}"
+           {% if request.endpoint in ['monthly_budget', 'monthly_budget_summary'] %}aria-current="page"{% endif %}>
+          <i class="bi bi-calendar2-check"></i>
+          <span>งบประมาณ</span>
+        </a>
+        <a class="nav-link {% if request.endpoint == 'analytics' %}active{% endif %}"
+           href="{{ url_for('analytics') }}"
+           {% if request.endpoint == 'analytics' %}aria-current="page"{% endif %}>
+          <i class="bi bi-bar-chart"></i>
+          <span>วิเคราะห์</span>
+        </a>
+        <div class="divider my-3"></div>
+        <a class="nav-link {% if request.endpoint == 'manage_menus' %}active{% endif %}"
+           href="{{ url_for('manage_menus') }}"
+           {% if request.endpoint == 'manage_menus' %}aria-current="page"{% endif %}>
+          <i class="bi bi-shop"></i>
+          <span>จัดการร้านและเมนู</span>
+        </a>
+        <a class="nav-link {% if request.endpoint == 'profile' %}active{% endif %}"
+           href="{{ url_for('profile') }}"
+           {% if request.endpoint == 'profile' %}aria-current="page"{% endif %}>
+          <i class="bi bi-person"></i>
+          <span>โปรไฟล์</span>
+        </a>
       </nav>
+
+      <div class="mt-auto pt-4 border-top">
+        <a class="btn btn-secondary w-100" href="{{ url_for('logout') }}">
+          <i class="bi bi-box-arrow-right me-2"></i> ออกจากระบบ
+        </a>
+      </div>
+    </aside>
+
+    <main class="main-panel">
+      <!-- Mobile Topbar -->
+      <header class="topbar d-lg-none">
+        <button class="btn-hamburger" type="button" data-bs-toggle="offcanvas" data-bs-target="#mobileMenu" aria-label="เปิดเมนู" aria-expanded="false">
+          <i class="bi bi-list"></i>
+        </button>
+        <a class="brand d-flex align-items-center gap-3 ms-auto" href="{{ url_for('dashboard') }}">
+          <i class="bi bi-wallet2" style="width:36px;height:36px;border-radius:8px;background:var(--brand);color:#fff;display:grid;place-items:center;font-style:normal;font-size:18px;"></i>
+          <span class="d-none d-sm-inline">Lunch Budget</span>
+        </a>
+        <div class="ms-auto text-end d-none d-sm-block" style="line-height:1.2;">
+          <div class="text-subtle fs-xs">สวัสดี</div>
+          <strong>{{ current_user.username }}</strong>
+        </div>
+      </header>
 
       <div class="content-wrap">
         {# Flash messages → converted to toasts via JS below #}
@@ -63,54 +113,110 @@
         {% block content %}{% endblock %}
       </div>
     </main>
-  </div>
 
-  <div class="offcanvas offcanvas-start glass-offcanvas" tabindex="-1" id="mainMenu">
-    <div class="offcanvas-header border-bottom border-white border-opacity-10">
-      <a class="brand m-0 p-0" href="{{ url_for('dashboard') }}" style="border:none">
-        <span class="brand-mark"><i class="bi bi-wallet2"></i></span>
-        <h5 class="offcanvas-title ms-3 text-white fw-bold">Lunch Budget</h5>
-      </a>
-      <button type="button" class="btn-close btn-close-white" data-bs-dismiss="offcanvas" aria-label="Close"></button>
-    </div>
-    <div class="offcanvas-body">
-      <nav class="nav flex-column gap-2 nav-glass">
-        <a class="nav-link {% if request.endpoint == 'dashboard' %}active{% endif %}" href="{{ url_for('dashboard') }}">
-          <i class="bi bi-grid-1x2"></i> Dashboard
-        </a>
-        <a class="nav-link {% if request.endpoint == 'add_expense' %}active{% endif %}" href="{{ url_for('add_expense') }}">
-          <i class="bi bi-plus-circle"></i> เพิ่มรายการ
-        </a>
-        <a class="nav-link {% if request.endpoint == 'add_multi_expenses' %}active{% endif %}" href="{{ url_for('add_multi_expenses') }}">
-          <i class="bi bi-ui-radios"></i> เพิ่มหลายรายการ
-        </a>
-        <a class="nav-link {% if request.endpoint == 'history' %}active{% endif %}" href="{{ url_for('history') }}">
-          <i class="bi bi-clock-history"></i> ประวัติ
-        </a>
-        <a class="nav-link {% if request.endpoint in ['online_orders', 'add_online_order', 'edit_online_order'] %}active{% endif %}" href="{{ url_for('online_orders') }}">
-          <i class="bi bi-cart"></i> สั่งของออนไลน์
-        </a>
-        <div class="nav-divider my-1" style="height:1px;background:rgba(255,255,255,0.07);border-radius:99px;"></div>
-        <a class="nav-link {% if request.endpoint in ['monthly_budget', 'monthly_budget_summary'] %}active{% endif %}" href="{{ url_for('monthly_budget') }}">
-          <i class="bi bi-calendar2-check"></i> งบประมาณรายเดือน
-        </a>
-        <a class="nav-link {% if request.endpoint == 'analytics' %}active{% endif %}" href="{{ url_for('analytics') }}">
-          <i class="bi bi-bar-chart"></i> Analytics
-        </a>
-        <a class="nav-link {% if request.endpoint == 'manage_menus' %}active{% endif %}" href="{{ url_for('manage_menus') }}">
-          <i class="bi bi-shop"></i> จัดการร้านและเมนู
-        </a>
-        <a class="nav-link {% if request.endpoint == 'profile' %}active{% endif %}" href="{{ url_for('profile') }}">
-          <i class="bi bi-person"></i> โปรไฟล์ของคุณ
-        </a>
-      </nav>
-      
-      <div class="mt-auto pt-4 border-top border-white border-opacity-10 d-md-none">
-        <div class="text-muted small">สวัสดี</div>
-        <a href="{{ url_for('profile') }}" class="text-white fw-bold text-decoration-none"><i class="bi bi-person-circle"></i> {{ current_user.username }}</a>
+    <!-- Mobile Offcanvas Menu -->
+    <div class="offcanvas offcanvas-start" tabindex="-1" id="mobileMenu" aria-labelledby="mobileMenuLabel">
+      <div class="offcanvas-header">
+        <h5 class="offcanvas-title" id="mobileMenuLabel">เมนู</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="offcanvas" aria-label="Close"></button>
+      </div>
+      <div class="offcanvas-body">
+        <nav class="nav" aria-label="เมนูหลัก">
+          <a class="nav-link {% if request.endpoint == 'dashboard' %}active{% endif %}"
+             href="{{ url_for('dashboard') }}"
+             {% if request.endpoint == 'dashboard' %}aria-current="page"{% endif %}>
+            <i class="bi bi-grid-1x2"></i>
+            <span>ภาพรวม</span>
+          </a>
+          <a class="nav-link {% if request.endpoint in ['add_expense', 'add_multi_expenses'] %}active{% endif %}"
+             href="{{ url_for('add_expense') }}"
+             {% if request.endpoint in ['add_expense', 'add_multi_expenses'] %}aria-current="page"{% endif %}>
+            <i class="bi bi-plus-circle"></i>
+            <span>เพิ่มรายการ</span>
+          </a>
+          <a class="nav-link {% if request.endpoint == 'history' %}active{% endif %}"
+             href="{{ url_for('history') }}"
+             {% if request.endpoint == 'history' %}aria-current="page"{% endif %}>
+            <i class="bi bi-clock-history"></i>
+            <span>ประวัติ</span>
+          </a>
+          <a class="nav-link {% if request.endpoint in ['monthly_budget', 'monthly_budget_summary'] %}active{% endif %}"
+             href="{{ url_for('monthly_budget') }}"
+             {% if request.endpoint in ['monthly_budget', 'monthly_budget_summary'] %}aria-current="page"{% endif %}>
+            <i class="bi bi-calendar2-check"></i>
+            <span>งบประมาณ</span>
+          </a>
+          <a class="nav-link {% if request.endpoint == 'analytics' %}active{% endif %}"
+             href="{{ url_for('analytics') }}"
+             {% if request.endpoint == 'analytics' %}aria-current="page"{% endif %}>
+            <i class="bi bi-bar-chart"></i>
+            <span>วิเคราะห์</span>
+          </a>
+          <div class="divider my-3"></div>
+          <a class="nav-link {% if request.endpoint == 'manage_menus' %}active{% endif %}"
+             href="{{ url_for('manage_menus') }}"
+             {% if request.endpoint == 'manage_menus' %}aria-current="page"{% endif %}>
+            <i class="bi bi-shop"></i>
+            <span>จัดการร้านและเมนู</span>
+          </a>
+          <a class="nav-link {% if request.endpoint == 'profile' %}active{% endif %}"
+             href="{{ url_for('profile') }}"
+             {% if request.endpoint == 'profile' %}aria-current="page"{% endif %}>
+            <i class="bi bi-person"></i>
+            <span>โปรไฟล์</span>
+          </a>
+        </nav>
+
+        <div class="user-info mt-4 pt-3 border-top">
+          <div class="label">ผู้ใช้งาน</div>
+          <a class="name d-flex align-items-center gap-2" href="{{ url_for('profile') }}">
+            <i class="bi bi-person-circle" style="font-size:20px;"></i>
+            <span>{{ current_user.username }}</span>
+          </a>
+          <a class="btn btn-secondary w-100 mt-3" href="{{ url_for('logout') }}">
+            <i class="bi bi-box-arrow-right me-2"></i> ออกจากระบบ
+          </a>
+        </div>
       </div>
     </div>
   </div>
+
+  <!-- Mobile Bottom Navigation -->
+  <nav class="mobile-bottom-nav" aria-label="เมนูหลัก">
+    <div class="mobile-nav-inner">
+      <a class="mobile-nav-item {% if request.endpoint == 'dashboard' %}active{% endif %}"
+         href="{{ url_for('dashboard') }}"
+         {% if request.endpoint == 'dashboard' %}aria-current="page"{% endif %}>
+        <i class="bi bi-grid-1x2"></i>
+        <span>ภาพรวม</span>
+      </a>
+      <a class="mobile-nav-item {% if request.endpoint in ['add_expense', 'add_multi_expenses'] %}active{% endif %}"
+         href="{{ url_for('add_expense') }}"
+         {% if request.endpoint in ['add_expense', 'add_multi_expenses'] %}aria-current="page"{% endif %}>
+        <i class="bi bi-plus-circle-fill"></i>
+        <span>เพิ่มรายการ</span>
+      </a>
+      <a class="mobile-nav-item {% if request.endpoint in ['monthly_budget', 'monthly_budget_summary'] %}active{% endif %}"
+         href="{{ url_for('monthly_budget') }}"
+         {% if request.endpoint in ['monthly_budget', 'monthly_budget_summary'] %}aria-current="page"{% endif %}>
+        <i class="bi bi-calendar2-check"></i>
+        <span>งบประมาณ</span>
+      </a>
+      <a class="mobile-nav-item {% if request.endpoint == 'history' %}active{% endif %}"
+         href="{{ url_for('history') }}"
+         {% if request.endpoint == 'history' %}aria-current="page"{% endif %}>
+        <i class="bi bi-clock-history"></i>
+        <span>ประวัติ</span>
+      </a>
+      <a class="mobile-nav-item {% if request.endpoint == 'analytics' %}active{% endif %}"
+         href="{{ url_for('analytics') }}"
+         {% if request.endpoint == 'analytics' %}aria-current="page"{% endif %}>
+        <i class="bi bi-bar-chart"></i>
+        <span>วิเคราะห์</span>
+      </a>
+    </div>
+  </nav>
+
   {% else %}
   <main class="auth-page">
     {% with messages = get_flashed_messages(with_categories=true) %}
@@ -129,34 +235,6 @@
   </main>
   {% endif %}
 
-  <!-- Mobile Bottom Navigation -->
-  {% if current_user %}
-  <nav class="mobile-bottom-nav d-md-none fixed-bottom" style="z-index: 1040;">
-    <div class="mobile-nav-inner d-flex justify-content-around">
-      <a href="{{ url_for('dashboard') }}" class="mobile-nav-item {% if request.endpoint == 'dashboard' %}active{% endif %}">
-        <i class="bi bi-grid-1x2"></i>
-        <span>หน้าหลัก</span>
-      </a>
-      <a href="{{ url_for('add_expense') }}" class="mobile-nav-item {% if request.endpoint in ['add_expense', 'add_multi_expenses'] %}active{% endif %}">
-        <i class="bi bi-plus-circle-fill fs-4"></i>
-        <span>เพิ่ม</span>
-      </a>
-      <a href="{{ url_for('monthly_budget') }}" class="mobile-nav-item {% if request.endpoint in ['monthly_budget','monthly_budget_summary'] %}active{% endif %}">
-        <i class="bi bi-calendar2-check"></i>
-        <span>งบเดือน</span>
-      </a>
-      <a href="{{ url_for('history') }}" class="mobile-nav-item {% if request.endpoint == 'history' %}active{% endif %}">
-        <i class="bi bi-clock-history"></i>
-        <span>ประวัติ</span>
-      </a>
-      <a href="{{ url_for('profile') }}" class="mobile-nav-item {% if request.endpoint == 'profile' %}active{% endif %}">
-        <i class="bi bi-person"></i>
-        <span>ตั้งค่า</span>
-      </a>
-    </div>
-  </nav>
-  {% endif %}
-
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" defer></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
   <script>
@@ -173,29 +251,22 @@
         warning: 'bi-exclamation-triangle-fill',
         info: 'bi-info-circle-fill',
       };
-      const colorMap = {
-        success: '#34d399',
-        danger: '#fb7185',
-        warning: '#fbbf24',
-        info: '#60a5fa',
-      };
 
       const id = 'toast_' + Date.now();
       const icon = iconMap[type] || iconMap.info;
-      const color = colorMap[type] || colorMap.info;
 
       const toastEl = document.createElement('div');
       toastEl.id = id;
-      toastEl.className = 'app-toast';
+      toastEl.className = 'app-toast ' + type;
       toastEl.innerHTML = `
-        <div class="app-toast-icon" style="color:${color}">
+        <div class="app-toast-icon">
           <i class="bi ${icon}"></i>
         </div>
         <div class="app-toast-msg">${message}</div>
         <button class="app-toast-close" onclick="dismissToast('${id}')">
           <i class="bi bi-x"></i>
         </button>
-        <div class="app-toast-progress" style="background:${color}"></div>
+        <div class="app-toast-progress"></div>
       `;
       container.appendChild(toastEl);
 

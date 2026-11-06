@@ -1,1 +1,0 @@
-import{E as e,s as t,u as n}from"./runtime-core.esm-bundler-CTn1umrH.js";import{i as r}from"./index-Bfgtg-p_.js";var i={},a={class:`p-4`};function o(r,i){return e(),n(`div`,a,[...i[0]||=[t(`h2`,null,`ManageMenusView`,-1),t(`p`,null,`This is a placeholder for ManageMenusView.vue`,-1)]])}var s=r(i,[[`render`,o]]);export{s as default};
