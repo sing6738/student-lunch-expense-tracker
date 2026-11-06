@@ -82,10 +82,10 @@ def get_me(current_user):
 @api_bp.route('/restaurants', methods=['GET'])
 @token_required
 def get_restaurants(current_user):
-    restaurants = Restaurant.query.filter_by(is_active=True).all()
+    restaurants = Restaurant.query.all()
     return jsonify({
         "success": True,
-        "data": [{"id": r.id, "name": r.name, "is_active": r.is_active} for r in restaurants]
+        "data": [{"id": r.id, "name": r.name, "is_active": True} for r in restaurants]
     })
 
 @api_bp.route('/restaurants/<int:id>/menus', methods=['GET'])
@@ -97,7 +97,7 @@ def get_menus(current_user, id):
         
     return jsonify({
         "success": True,
-        "data": [{"id": m.id, "restaurant_id": m.restaurant_id, "name": m.menu_name, "price": m.price, "is_active": m.is_active} for m in restaurant.menus]
+        "data": [{"id": m.id, "restaurant_id": m.restaurant_id, "name": m.menu_name, "price": m.price, "is_active": True} for m in restaurant.menus]
     })
 
 @api_bp.route('/expenses', methods=['GET'])
