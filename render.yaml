@@ -7,6 +7,10 @@ services:
     envVars:
       - key: SECRET_KEY
         generateValue: true
+      - key: JWT_SECRET_KEY
+        generateValue: true
+      - key: NODE_VERSION
+        value: 22.12.0
   - type: worker
     name: lunch-expense-telegram-bot
     runtime: python
